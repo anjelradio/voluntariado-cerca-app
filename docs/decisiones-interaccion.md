@@ -59,3 +59,73 @@ Después:
 
 ![](evidencias/clase-16/carga-despues.png)
 ![](evidencias/clase-16/carga-despues-quedan.png)
+
+# Historial de postulaciones (tarea 4)
+
+Pregunta que responde: ¿qué postulaciones realicé y en qué estado están?  
+Issue principal: #17
+
+Cada postulación y cada cancelación se guarda en la tabla historial_postulaciones con el usuario, la convocatoria, el tipo y la fecha. Antes una cancelación borraba la fila de inscripciones y no quedaba rastro.  
+Se guarda en: [AnuncioService.java](../backend/voluntarioserca/src/main/java/com/ithc/voluntarioserca/anuncios/AnuncioService.java#L100) (postulación) y [AnuncioService.java](../backend/voluntarioserca/src/main/java/com/ithc/voluntarioserca/anuncios/AnuncioService.java#L114) (cancelación)  
+Se consulta en: [HistorialController.java](../backend/voluntarioserca/src/main/java/com/ithc/voluntarioserca/historial/HistorialController.java#L30) y [HistorialService.java](../backend/voluntarioserca/src/main/java/com/ithc/voluntarioserca/historial/HistorialService.java#L26). El usuario sale del token, así que cada uno ve solo lo suyo, del más reciente al más antiguo.
+
+| Decisión | Antes | Después |
+|---|---|---|
+| Fitts | No había forma de llegar al historial | Botón "Mi historial" de 480 x 42 px arriba del dashboard |
+| Hick | Postulaciones mezcladas con todas las convocatorias | Solo tres pestañas: Todas, Activas y Canceladas |
+| Carga cognitiva | Había que buscar "Estás postulado" tarjeta por tarjeta | Cada evento dice qué pasó, cuándo y en qué estado está |
+
+## Fitts
+
+Antes: para ver mis postulaciones tenía que bajar por las 17 convocatorias del dashboard (más de 4600 px de página). No había ninguna entrada al historial.  
+Después: el botón "Mi historial" está arriba, ocupa todo el ancho de la tarjeta y mide 480 x 42 px, cerca de donde empieza la pantalla.  
+Código: [Dashboard.tsx](../frontend/ithc/src/pages/dashboard/Dashboard.tsx#L19), [index.css](../frontend/ithc/src/index.css)
+
+Antes:
+
+![](evidencias/historial/fitts-antes.png)
+
+Después:
+
+![](evidencias/historial/fitts-despues.png)
+
+## Hick
+
+Antes: las postulaciones estaban mezcladas con convocatorias propias, cerradas, vencidas y de otros. Para separar lo mío había que comparar cada tarjeta.  
+Después: el historial solo tiene tres pestañas (Todas, Activas y Canceladas) y cada una muestra cuántos eventos tiene. No agregamos más filtros para que no compitan entre sí.  
+Código: [historial.ts](../frontend/ithc/src/domain/historial.ts#L32) (PESTANAS), [HistorialPage.tsx](../frontend/ithc/src/pages/historial/HistorialPage.tsx#L57)
+
+Antes:
+
+![](evidencias/historial/hick-carga-antes.png)
+
+Después:
+
+![](evidencias/historial/historial-todas.png)
+![](evidencias/historial/historial-activas.png)
+
+## Carga cognitiva
+
+Antes: para saber en qué me postulé tenía que recordar los nombres o buscar "✓ Estás postulado". Si cancelaba, no quedaba nada que lo recordara.  
+Después: cada evento muestra primero qué pasó ("Te postulaste a" o "Cancelaste tu postulación a"), la convocatoria, la fecha de la actividad, cuándo se registró y el estado actual en palabras (Postulación activa, Cancelada, Convocatoria cerrada, Actividad realizada). No hay que abrir otra pantalla.  
+Código: [historial.ts](../frontend/ithc/src/domain/historial.ts#L18) (TIPOS y ESTADOS_POSTULACION), [HistorialService.java](../backend/voluntarioserca/src/main/java/com/ithc/voluntarioserca/historial/HistorialService.java#L36) (estado), [HistorialPage.tsx](../frontend/ithc/src/pages/historial/HistorialPage.tsx#L75)
+
+Antes:
+
+![](evidencias/historial/hick-carga-antes.png)
+
+Después:
+
+![](evidencias/historial/historial-todas.png)
+
+## Estado vacío
+
+Si la persona todavía no se postuló a nada, el historial lo dice y ofrece "Ver convocatorias disponibles", que lleva al dashboard con el filtro de disponibles activado.  
+Código: [HistorialPage.tsx](../frontend/ithc/src/pages/historial/HistorialPage.tsx#L48)
+
+![](evidencias/historial/historial-vacio.png)
+
+## Pruebas
+
+Backend: AnuncioServiceTest (postularse y cancelar guardan un evento, una postulación rechazada no guarda nada), HistorialServiceTest (estado de cada postulación) y EventoPostulacionRepositoryTest (cada usuario ve solo lo suyo y en orden).  
+Frontend: historial.test.ts (fecha y pestañas) y HistorialPage.test.tsx (estado vacío y texto de cada evento).
