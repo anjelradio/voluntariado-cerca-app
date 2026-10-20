@@ -4,16 +4,22 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 import java.time.LocalDate;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ithc.voluntarioserca.auth.User;
+import com.ithc.voluntarioserca.historial.EventoPostulacion;
 import com.ithc.voluntarioserca.historial.EventoPostulacionRepository;
 
 class AnuncioServiceTest {
@@ -182,5 +188,44 @@ class AnuncioServiceTest {
         AnuncioException e = assertThrows(AnuncioException.class, () -> service.cancelarPostulacion(usuario(2L), 10L));
 
         assertEquals("No te postulaste a esta convocatoria", e.getMessage());
+    }
+
+    @Test
+    void postularseGuardaUnEventoEnElHistorial() {
+        Anuncio anuncio = nuevoAnuncio(5);
+        anuncio.setTitulo("Limpieza del parque");
+        User voluntario = usuario(2L);
+
+        service.inscribirse(voluntario, 10L);
+
+        ArgumentCaptor<EventoPostulacion> evento = ArgumentCaptor.forClass(EventoPostulacion.class);
+        verify(historial).save(evento.capture());
+        assertEquals(EventoPostulacion.Tipo.postulacion, evento.getValue().getTipo());
+        assertEquals(voluntario, evento.getValue().getUsuario());
+        assertEquals("Limpieza del parque", evento.getValue().getTitulo());
+    }
+
+    @Test
+    void cancelarGuardaOtroEventoSinBorrarElAnterior() {
+        nuevoAnuncio(5);
+        User voluntario = usuario(2L);
+        service.inscribirse(voluntario, 10L);
+
+        service.cancelarPostulacion(voluntario, 10L);
+
+        ArgumentCaptor<EventoPostulacion> eventos = ArgumentCaptor.forClass(EventoPostulacion.class);
+        verify(historial, times(2)).save(eventos.capture());
+        assertEquals(EventoPostulacion.Tipo.postulacion, eventos.getAllValues().get(0).getTipo());
+        assertEquals(EventoPostulacion.Tipo.cancelacion, eventos.getAllValues().get(1).getTipo());
+    }
+
+    @Test
+    void unaPostulacionRechazadaNoQuedaEnElHistorial() {
+        nuevoAnuncio(5);
+        service.cerrar(creador, 10L);
+
+        assertThrows(AnuncioException.class, () -> service.inscribirse(usuario(2L), 10L));
+
+        verify(historial, never()).save(any());
     }
 }
