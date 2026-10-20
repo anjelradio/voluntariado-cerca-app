@@ -16,6 +16,9 @@ export const Dashboard = () => {
       <p>Bienvenido, {user?.name}</p>
       <p>{user?.email}</p>
 
+      <Link to="/historial" className="boton-grande">
+        Mi historial
+      </Link>
       <Link to="/crear-anuncio">Crear anuncio</Link>
 
       <h3>Convocatorias</h3>

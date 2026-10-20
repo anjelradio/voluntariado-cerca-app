@@ -93,6 +93,68 @@ textarea {
   color: #b26a00;
 }
 
+.boton-grande {
+  display: block;
+  padding: 12px;
+  border-radius: 6px;
+  background: #2a7ae2;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.pestanas {
+  display: flex;
+  gap: 6px;
+}
+
+.pestana {
+  flex: 1;
+  padding: 10px;
+  background: #eef2f8;
+  color: #333;
+}
+
+.pestana.activa {
+  background: #2a7ae2;
+  color: white;
+}
+
+.vacio {
+  background: #f7f9fc;
+  padding: 16px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.vacio p {
+  margin: 0;
+}
+
+.estado-postulacion {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #e6f4ea;
+  color: #1e6b37;
+}
+
+.estado-postulacion.cancelada,
+.estado-postulacion.eliminada {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.estado-postulacion.cerrada,
+.estado-postulacion.realizada {
+  background: #eee;
+  color: #555;
+}
+
 .ayuda {
   margin: 0;
   color: #666;
