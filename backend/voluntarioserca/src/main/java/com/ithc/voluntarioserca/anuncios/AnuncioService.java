@@ -1,6 +1,7 @@
 package com.ithc.voluntarioserca.anuncios;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Sort;
@@ -8,15 +9,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ithc.voluntarioserca.auth.User;
+import com.ithc.voluntarioserca.historial.EventoPostulacion;
+import com.ithc.voluntarioserca.historial.EventoPostulacionRepository;
 
 @Service
 @Transactional
 public class AnuncioService {
 
     private final AnuncioRepository anuncioRepository;
+    private final EventoPostulacionRepository historial;
 
-    public AnuncioService(AnuncioRepository anuncioRepository) {
+    public AnuncioService(AnuncioRepository anuncioRepository, EventoPostulacionRepository historial) {
         this.anuncioRepository = anuncioRepository;
+        this.historial = historial;
     }
 
     // La búsqueda y los filtros se resuelven en la consulta a la base de datos
@@ -47,6 +52,7 @@ public class AnuncioService {
     public void eliminar(User user, Long id) {
         Anuncio anuncio = buscarParaModificar(id);
         exigirCreador(anuncio, user, "eliminarlo");
+        historial.desvincularAnuncio(anuncio.getId());
         anuncioRepository.delete(anuncio);
     }
 
@@ -91,6 +97,7 @@ public class AnuncioService {
             throw new AnuncioException(409, "No quedan cupos disponibles");
         }
         anuncio.getVoluntarios().add(user);
+        historial.save(new EventoPostulacion(user, anuncio, EventoPostulacion.Tipo.postulacion, LocalDateTime.now()));
         return anuncio;
     }
 
@@ -104,6 +111,7 @@ public class AnuncioService {
             throw new AnuncioException(409, "La actividad ya se realizó; no se puede cancelar la postulación");
         }
         anuncio.getVoluntarios().remove(user);
+        historial.save(new EventoPostulacion(user, anuncio, EventoPostulacion.Tipo.cancelacion, LocalDateTime.now()));
         return anuncio;
     }
 

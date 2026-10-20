@@ -14,17 +14,20 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ithc.voluntarioserca.auth.User;
+import com.ithc.voluntarioserca.historial.EventoPostulacionRepository;
 
 class AnuncioServiceTest {
 
     private AnuncioRepository repository;
+    private EventoPostulacionRepository historial;
     private AnuncioService service;
     private User creador;
 
     @BeforeEach
     void setUp() {
         repository = mock(AnuncioRepository.class);
-        service = new AnuncioService(repository);
+        historial = mock(EventoPostulacionRepository.class);
+        service = new AnuncioService(repository, historial);
         creador = usuario(1L);
     }
 
