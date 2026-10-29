@@ -7,7 +7,7 @@ import { filtrosActivos } from "../../domain/filtros";
 
 export const Dashboard = () => {
   const { user, logout } = useAuth();
-  const { anuncios, cargando, error, filtros, limpiarFiltros } = useAnuncios();
+  const { anuncios, cargando, error, filtros, limpiarFiltros, vista, cambiarVista } = useAnuncios();
   const hayFiltros = filtrosActivos(filtros).length > 0;
 
   return (
@@ -21,6 +21,27 @@ export const Dashboard = () => {
       </Link>
       <Link to="/crear-anuncio">Crear anuncio</Link>
 
+      <div className="pestanas" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={vista === "explorar"}
+          className={vista === "explorar" ? "pestana activa" : "pestana"}
+          onClick={() => cambiarVista("explorar")}
+        >
+          Explorar
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={vista === "mis-anuncios"}
+          className={vista === "mis-anuncios" ? "pestana activa" : "pestana"}
+          onClick={() => cambiarVista("mis-anuncios")}
+        >
+          Mis anuncios
+        </button>
+      </div>
+
       <h3>Convocatorias</h3>
       <p className="ayuda">
         Elige una convocatoria y pulsa "Postularme". Puedes cancelar tu postulación mientras la actividad no se haya
@@ -33,11 +54,11 @@ export const Dashboard = () => {
       {!cargando && !error && anuncios.length === 0 && (
         hayFiltros ? (
           <div className="aviso">
-            <p>Ninguna convocatoria coincide con la búsqueda y los filtros elegidos.</p>
+            <p>Sin resultados</p>
             <button type="button" className="secundario" onClick={limpiarFiltros}>Quitar filtros</button>
           </div>
         ) : (
-          <p>Todavía no hay anuncios.</p>
+          <p>Sin resultados</p>
         )
       )}
       {anuncios.map((a) => (

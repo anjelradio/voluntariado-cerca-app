@@ -30,9 +30,12 @@ import com.ithc.voluntarioserca.auth.UserRepository;
 public class AnuncioController {
 
     record Postulado(Long id, String nombre) {}
+    record PostulanteDto(Long id, Long usuarioId, String nombre, String email, String fechaSolicitud) {}
+    record PostulantesResponse(Long anuncioId, String titulo, String organizacion, int cupos, int aceptadosTotal,
+            List<PostulanteDto> pendientes, List<PostulanteDto> aceptados) {}
     record AnuncioResponse(Long id, String titulo, String organizacion, String descripcion, String fecha, String lugar,
             int cupos, String causa, String modalidad, String estado, Long creadorId, String creadorNombre, int inscritos, boolean inscrito,
-            List<Postulado> postulados) {}
+            String miEstadoPostulacion, List<Postulado> postulados) {}
 
     private final AnuncioService anuncioService;
     private final UserRepository userRepository;
@@ -60,6 +63,43 @@ public class AnuncioController {
                 .toList();
         return ResponseEntity.ok(anuncios);
     }
+
+    @GetMapping("/explorar")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> listarExplorar(@RequestHeader(value = "Authorization", required = false) String header,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Anuncio.Causa causa,
+            @RequestParam(required = false) Anuncio.Modalidad modalidad,
+            @RequestParam(required = false) String lugar,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta,
+            @RequestParam(defaultValue = "false") boolean disponibles) {
+        User user = usuarioDeSesion(header);
+        AnuncioFiltro filtro = new AnuncioFiltro(q, causa, modalidad, lugar, desde, hasta, disponibles);
+        List<AnuncioResponse> anuncios = anuncioService.listarExplorar(user, filtro).stream()
+                .map(a -> toResponse(a, user))
+                .toList();
+        return ResponseEntity.ok(anuncios);
+    }
+
+    @GetMapping("/mis-anuncios")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> listarMisAnuncios(@RequestHeader(value = "Authorization", required = false) String header,
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) Anuncio.Causa causa,
+            @RequestParam(required = false) Anuncio.Modalidad modalidad,
+            @RequestParam(required = false) String lugar,
+            @RequestParam(required = false) String desde,
+            @RequestParam(required = false) String hasta,
+            @RequestParam(defaultValue = "false") boolean disponibles) {
+        User user = usuarioDeSesion(header);
+        AnuncioFiltro filtro = new AnuncioFiltro(q, causa, modalidad, lugar, desde, hasta, disponibles);
+        List<AnuncioResponse> anuncios = anuncioService.listarMisAnuncios(user, filtro).stream()
+                .map(a -> toResponse(a, user))
+                .toList();
+        return ResponseEntity.ok(anuncios);
+    }
+
 
     @PostMapping
     public ResponseEntity<?> crear(@RequestHeader(value = "Authorization", required = false) String header,
@@ -111,6 +151,48 @@ public class AnuncioController {
         return ResponseEntity.ok(toResponse(anuncioService.cancelarPostulacion(user, id), user));
     }
 
+    @GetMapping("/{id}/postulantes")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> listarPostulantes(@RequestHeader(value = "Authorization", required = false) String header,
+            @PathVariable Long id) {
+        User user = usuarioDeSesion(header);
+        Anuncio anuncio = anuncioService.buscarPorId(id);
+        List<Inscripcion> inscripciones = anuncioService.listarInscripciones(user, id);
+
+        List<PostulanteDto> pendientes = inscripciones.stream()
+                .filter(i -> i.getEstado() == EstadoInscripcion.pendiente)
+                .map(i -> new PostulanteDto(i.getId(), i.getUsuario().getId(), i.getUsuario().getName(),
+                        i.getUsuario().getEmail(), i.getFechaSolicitud().toString()))
+                .toList();
+
+        List<PostulanteDto> aceptados = inscripciones.stream()
+                .filter(i -> i.getEstado() == EstadoInscripcion.aceptado)
+                .map(i -> new PostulanteDto(i.getId(), i.getUsuario().getId(), i.getUsuario().getName(),
+                        i.getUsuario().getEmail(), i.getFechaSolicitud().toString()))
+                .toList();
+
+        int aceptadosTotal = aceptados.size();
+
+        return ResponseEntity.ok(new PostulantesResponse(anuncio.getId(), anuncio.getTitulo(),
+                anuncio.getOrganizacion(), anuncio.getCupos(), aceptadosTotal, pendientes, aceptados));
+    }
+
+    @PostMapping("/{id}/postulantes/{usuarioId}/aceptar")
+    public ResponseEntity<?> aceptarPostulante(@RequestHeader(value = "Authorization", required = false) String header,
+            @PathVariable Long id, @PathVariable Long usuarioId) {
+        User user = usuarioDeSesion(header);
+        anuncioService.aceptarPostulante(user, id, usuarioId);
+        return ResponseEntity.ok(Map.of("message", "Postulante aceptado correctamente"));
+    }
+
+    @PostMapping("/{id}/postulantes/{usuarioId}/rechazar")
+    public ResponseEntity<?> rechazarPostulante(@RequestHeader(value = "Authorization", required = false) String header,
+            @PathVariable Long id, @PathVariable Long usuarioId) {
+        User user = usuarioDeSesion(header);
+        anuncioService.rechazarPostulante(user, id, usuarioId);
+        return ResponseEntity.ok(Map.of("message", "Postulación rechazada y eliminada"));
+    }
+
     @ExceptionHandler(AnuncioException.class)
     public ResponseEntity<?> manejarError(AnuncioException e) {
         return ResponseEntity.status(e.getStatus()).body(Map.of("message", e.getMessage()));
@@ -131,12 +213,14 @@ public class AnuncioController {
         User creador = a.getCreador();
         Long creadorId = creador != null ? creador.getId() : null;
         String creadorNombre = creador != null ? creador.getName() : null;
-        int inscritos = a.getVoluntarios() == null ? 0 : a.getVoluntarios().size();
-        boolean inscrito = user != null && anuncioService.estaInscrito(a, user);
+        int inscritos = (int) anuncioService.contarAceptados(a.getId());
+        EstadoInscripcion estadoInscripcion = user != null ? anuncioService.obtenerEstadoPostulacion(a.getId(), user.getId()) : null;
+        String miEstadoPostulacion = estadoInscripcion != null ? estadoInscripcion.name() : null;
+        boolean inscrito = estadoInscripcion == EstadoInscripcion.aceptado;
 
         return new AnuncioResponse(a.getId(), a.getTitulo(), a.getOrganizacion(), a.getDescripcion(), a.getFecha(),
                 a.getLugar(), a.getCupos(), nombre(a.getCausa()), nombre(a.getModalidad()), a.getEstado().name(),
-                creadorId, creadorNombre, inscritos, inscrito, postulados(a, user));
+                creadorId, creadorNombre, inscritos, inscrito, miEstadoPostulacion, postulados(a, user));
     }
 
     // Los anuncios creados antes de agregar causa y modalidad las tienen en null

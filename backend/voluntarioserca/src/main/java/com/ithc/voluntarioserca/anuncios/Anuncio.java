@@ -1,10 +1,14 @@
 package com.ithc.voluntarioserca.anuncios;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.ithc.voluntarioserca.auth.User;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -13,10 +17,10 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+
 
 @Entity
 @Table(name = "anuncios")
@@ -64,9 +68,8 @@ public class Anuncio {
     @JoinColumn(name = "autor_id")
     private User creador;
 
-    @ManyToMany
-    @JoinTable(name = "inscripciones")
-    private Set<User> voluntarios = new HashSet<>();
+    @OneToMany(mappedBy = "anuncio", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Inscripcion> inscripciones = new ArrayList<>();
 
     public Long getId() { return id; }
 
@@ -100,5 +103,13 @@ public class Anuncio {
     public User getCreador() { return creador; }
     public void setCreador(User creador) { this.creador = creador; }
 
-    public Set<User> getVoluntarios() { return voluntarios; }
+    public List<Inscripcion> getInscripciones() { return inscripciones; }
+    public void setInscripciones(List<Inscripcion> inscripciones) { this.inscripciones = inscripciones; }
+
+    public Set<User> getVoluntarios() {
+        return inscripciones.stream()
+                .filter(i -> i.getEstado() == EstadoInscripcion.aceptado)
+                .map(Inscripcion::getUsuario)
+                .collect(Collectors.toSet());
+    }
 }

@@ -36,7 +36,7 @@ class AnuncioFiltroTest {
         guardar("Clases de lectura", "Fundación Leer", Causa.educacion, Modalidad.virtual, "Online", "2099-01-10", 5);
         guardar("Limpieza del río", "Río Vivo", Causa.medio_ambiente, Modalidad.presencial, "Santa Cruz", "2099-01-20", 10);
         Anuncio lleno = guardar("Tutorías de matemática", "Fundación Leer", Causa.educacion, Modalidad.virtual, "Online", "2099-02-01", 1);
-        lleno.getVoluntarios().add(voluntario);
+        em.persist(new Inscripcion(lleno, voluntario, EstadoInscripcion.aceptado));
         Anuncio cerrado = guardar("Campaña de vacunación", "Salud Ya", Causa.salud, Modalidad.presencial, "Cochabamba", "2099-01-15", 3);
         cerrado.setEstado(Anuncio.Estado.cerrada);
         em.flush();
@@ -117,5 +117,32 @@ class AnuncioFiltroTest {
     void siNadaCoincideDevuelveUnaListaVacia() {
         assertTrue(titulos(new AnuncioFiltro(null, Causa.animales, null, null, null, null, false)).isEmpty());
         assertTrue(titulos(new AnuncioFiltro("no existe", null, Modalidad.virtual, null, null, null, false)).isEmpty());
+    }
+
+    @Test
+    void explorarExcluyeAnunciosPropiosYMisAnunciosSoloIncluyeLosPropios() {
+        User otro = usuario("Carlos", "carlos@test.com");
+        Anuncio aOtro = new Anuncio();
+        aOtro.setTitulo("Reforestación urbana");
+        aOtro.setOrganizacion("Verde Futuro");
+        aOtro.setDescripcion("Plantando árboles");
+        aOtro.setCausa(Causa.medio_ambiente);
+        aOtro.setModalidad(Modalidad.presencial);
+        aOtro.setLugar("La Paz");
+        aOtro.setFecha("2099-03-01");
+        aOtro.setCupos(20);
+        aOtro.setCreador(otro);
+        em.persist(aOtro);
+        em.flush();
+
+        AnuncioFiltro filtro = new AnuncioFiltro(null, null, null, null, null, null, false);
+        List<String> enExplorar = repository.findAll(filtro.toSpecificationExplorar(creador))
+                .stream().map(Anuncio::getTitulo).toList();
+        assertEquals(List.of("Reforestación urbana"), enExplorar);
+
+        List<String> enMisAnuncios = repository.findAll(filtro.toSpecificationMisAnuncios(creador))
+                .stream().map(Anuncio::getTitulo).sorted().toList();
+        assertEquals(List.of("Campaña de vacunación", "Clases de lectura", "Limpieza del río", "Tutorías de matemática"),
+                enMisAnuncios);
     }
 }

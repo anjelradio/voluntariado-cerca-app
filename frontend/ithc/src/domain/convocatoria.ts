@@ -36,6 +36,7 @@ export interface Anuncio extends Omit<AnuncioDatos, "causa" | "modalidad"> {
   creadorNombre: string;
   inscritos: number;
   inscrito: boolean;
+  miEstadoPostulacion?: "pendiente" | "aceptado" | null;
   postulados: Postulado[];
 }
 
@@ -43,6 +44,25 @@ export interface Postulado {
   id: number;
   nombre: string;
 }
+
+export interface Postulante {
+  id: number;
+  usuarioId: number;
+  nombre: string;
+  email: string;
+  fechaSolicitud: string;
+}
+
+export interface PostulantesConvocatoria {
+  anuncioId: number;
+  titulo: string;
+  organizacion: string;
+  cupos: number;
+  aceptadosTotal: number;
+  pendientes: Postulante[];
+  aceptados: Postulante[];
+}
+
 
 export const esCreador = (anuncio: Anuncio, userId?: number) => anuncio.creadorId === userId;
 

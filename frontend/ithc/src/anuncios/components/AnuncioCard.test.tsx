@@ -99,10 +99,11 @@ describe("Postulación", () => {
     expect(screen.getByText("Cerrar convocatoria")).toBeTruthy();
   });
 
-  it("el creador ve la lista de postulados", () => {
+  it("el creador ve el enlace a postulantes y no la lista incrustada", () => {
     mostrar({ ...anuncio, inscritos: 1, postulados: [{ id: 9, nombre: "Luis" }] });
 
-    expect(screen.getByText("Luis")).toBeTruthy();
+    expect(screen.getByText("Postulantes")).toBeTruthy();
+    expect(screen.queryByText("Luis")).toBeNull();
   });
 
   it("quien no es el creador puede postularse y no ve la lista", () => {
@@ -112,9 +113,19 @@ describe("Postulación", () => {
     expect(screen.queryByText("Postulados:")).toBeNull();
   });
 
-  it("quien ya se postuló puede cancelar su postulación", async () => {
-    mostrar({ ...anuncio, creadorId: 8, inscrito: true, inscritos: 1 });
+  it("quien tiene solicitud en espera ve Solicitud en espera y puede cancelar", async () => {
+    mostrar({ ...anuncio, creadorId: 8, miEstadoPostulacion: "pendiente" });
 
+    expect(screen.getByText("Solicitud en espera")).toBeTruthy();
+    fireEvent.click(screen.getByText("Cancelar postulación"));
+
+    await waitFor(() => expect(cancelarPostulacion).toHaveBeenCalledWith(1));
+  });
+
+  it("quien ya fue aceptado ve ✓ Estás postulado y puede cancelar", async () => {
+    mostrar({ ...anuncio, creadorId: 8, miEstadoPostulacion: "aceptado", inscritos: 1 });
+
+    expect(screen.getByText("✓ Estás postulado")).toBeTruthy();
     fireEvent.click(screen.getByText("Cancelar postulación"));
 
     await waitFor(() => expect(cancelarPostulacion).toHaveBeenCalledWith(1));
@@ -142,6 +153,6 @@ describe("Postulación", () => {
 
     fireEvent.click(screen.getByText("Postularme"));
 
-    expect(await screen.findByText("Postulación enviada. Ya apareces entre los postulados.")).toBeTruthy();
+    expect(await screen.findByText("Postulación enviada. Tu solicitud está en espera.")).toBeTruthy();
   });
 });

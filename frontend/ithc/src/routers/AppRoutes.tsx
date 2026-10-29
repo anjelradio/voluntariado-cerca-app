@@ -11,6 +11,7 @@ import { ResetPasswordPage } from "../auth/pages/recuperarPassword/ResetPassword
 import { CrearAnuncioPage } from "../anuncios/pages/CrearAnuncioPage"
 import { AnuncioPublicadoPage } from "../anuncios/pages/AnuncioPublicadoPage"
 import { EditarAnuncioPage } from "../anuncios/pages/EditarAnuncioPage"
+import { PostulantesPage } from "../anuncios/pages/PostulantesPage"
 import { HistorialPage } from "../pages/historial/HistorialPage"
 
 export const AppRoutes = () => {
@@ -37,6 +38,7 @@ export const AppRoutes = () => {
           <Route path="/crear-anuncio" element={<CrearAnuncioPage/>}/>
           <Route path="/anuncio-publicado" element={<AnuncioPublicadoPage/>}/>
           <Route path="/editar-anuncio/:id" element={<EditarAnuncioPage/>}/>
+          <Route path="/anuncios/:id/postulantes" element={<PostulantesPage/>}/>
           <Route path="/historial" element={<HistorialPage/>}/>
 
         </Route>

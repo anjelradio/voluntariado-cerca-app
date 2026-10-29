@@ -8,11 +8,13 @@ import {
   crearAnuncioRequest,
   editarAnuncioRequest,
   eliminarAnuncioRequest,
+  explorarAnunciosRequest,
   inscribirseRequest,
-  listarAnunciosRequest,
+  misAnunciosRequest,
   reabrirConvocatoriaRequest,
 } from "../../api/anunciosApi";
 import { SIN_FILTROS, type Filtros } from "../../domain/filtros";
+import type { VistaConvocatorias } from "./anunciosTypes";
 
 interface AnunciosProviderProps {
   children: React.ReactNode;
@@ -24,18 +26,20 @@ export const AnunciosProvider = ({ children }: AnunciosProviderProps) => {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState("");
   const [filtros, setFiltros] = useState<Filtros>(SIN_FILTROS);
+  const [vista, setVista] = useState<VistaConvocatorias>("explorar");
 
   const recargar = useCallback(async () => {
     setCargando(true);
     setError("");
     try {
-      setAnuncios(await listarAnunciosRequest(filtros));
+      const peticion = vista === "mis-anuncios" ? misAnunciosRequest : explorarAnunciosRequest;
+      setAnuncios(await peticion(filtros));
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setCargando(false);
     }
-  }, [filtros]);
+  }, [filtros, vista]);
 
   // Los anuncios vienen de la base de datos: se cargan al iniciar sesión y cada vez que cambian los filtros.
   // La espera corta evita una petición por cada tecla mientras se escribe la búsqueda.
@@ -44,6 +48,8 @@ export const AnunciosProvider = ({ children }: AnunciosProviderProps) => {
     const espera = setTimeout(recargar, 300);
     return () => clearTimeout(espera);
   }, [isAuthenticated, recargar]);
+
+  const cambiarVista = (nuevaVista: VistaConvocatorias) => setVista(nuevaVista);
 
   const cambiarFiltros = (cambios: Partial<Filtros>) => setFiltros((actual) => ({ ...actual, ...cambios }));
 
@@ -54,7 +60,9 @@ export const AnunciosProvider = ({ children }: AnunciosProviderProps) => {
 
   const crear = async (datos: AnuncioDatos) => {
     const nuevo = await crearAnuncioRequest(datos);
-    setAnuncios((lista) => [nuevo, ...lista]);
+    if (vista === "mis-anuncios") {
+      setAnuncios((lista) => [nuevo, ...lista]);
+    }
   };
 
   const editar = async (id: number, datos: AnuncioDatos) => actualizar(await editarAnuncioRequest(id, datos));
@@ -73,7 +81,7 @@ export const AnunciosProvider = ({ children }: AnunciosProviderProps) => {
   const cancelarPostulacion = async (id: number) => actualizar(await cancelarPostulacionRequest(id));
 
   return (
-    <AnunciosContext.Provider value={{ anuncios: isAuthenticated ? anuncios : [], cargando, error, filtros, cambiarFiltros, limpiarFiltros, recargar, crear, editar, eliminar, cerrar, reabrir, inscribirse, cancelarPostulacion }}>
+    <AnunciosContext.Provider value={{ anuncios: isAuthenticated ? anuncios : [], cargando, error, filtros, vista, cambiarVista, cambiarFiltros, limpiarFiltros, recargar, crear, editar, eliminar, cerrar, reabrir, inscribirse, cancelarPostulacion }}>
       {children}
     </AnunciosContext.Provider>
   );

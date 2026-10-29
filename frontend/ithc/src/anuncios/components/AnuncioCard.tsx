@@ -70,7 +70,19 @@ export const AnuncioCard = ({ anuncio }: AnuncioCardProps) => {
       </p>
 
       {/* Postulación: si está bloqueada se explica el motivo. Al creador no se le muestra porque nunca puede postularse */}
-      {esMio ? null : anuncio.inscrito ? (
+      {esMio ? null : anuncio.miEstadoPostulacion === "pendiente" ? (
+        <div className="acciones">
+          <p className="aviso-pendiente">Solicitud en espera</p>
+          <button
+            className="secundario"
+            onClick={() =>
+              ejecutar(() => cancelarPostulacion(anuncio.id), "Cancelaste tu postulación.")
+            }
+          >
+            Cancelar postulación
+          </button>
+        </div>
+      ) : anuncio.miEstadoPostulacion === "aceptado" || anuncio.inscrito ? (
         <div className="acciones">
           <p className="ok">✓ Estás postulado</p>
           <button
@@ -87,7 +99,7 @@ export const AnuncioCard = ({ anuncio }: AnuncioCardProps) => {
           <button
             disabled={!!bloqueo}
             onClick={() =>
-              ejecutar(() => inscribirse(anuncio.id), "Postulación enviada. Ya apareces entre los postulados.")
+              ejecutar(() => inscribirse(anuncio.id), "Postulación enviada. Tu solicitud está en espera.")
             }
           >
             Postularme
@@ -108,25 +120,10 @@ export const AnuncioCard = ({ anuncio }: AnuncioCardProps) => {
         </p>
       )}
 
-      {/* El creador ve la lista de postulados */}
-      {esMio && (
-        <div className="postulados">
-          <p className="detalle">Postulados:</p>
-          {anuncio.postulados.length === 0 ? (
-            <p className="detalle">Nadie se ha postulado todavía.</p>
-          ) : (
-            <ul>
-              {anuncio.postulados.map((p) => (
-                <li key={p.id}>{p.nombre}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-
       {/* Acciones del creador */}
       {esMio && !confirmando && (
         <div className="acciones">
+          <Link to={`/anuncios/${anuncio.id}/postulantes`}>Postulantes</Link>
           <Link to={`/editar-anuncio/${anuncio.id}`}>Editar</Link>
           {anuncio.estado === "abierta" ? (
             <button className="secundario" onClick={() => ejecutar(() => cerrar(anuncio.id))}>

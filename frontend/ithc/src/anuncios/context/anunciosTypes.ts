@@ -1,12 +1,16 @@
 import type { Anuncio, AnuncioDatos } from "../../domain/convocatoria";
 import type { Filtros } from "../../domain/filtros";
 
+export type VistaConvocatorias = "explorar" | "mis-anuncios";
+
 export interface AnunciosContextType {
   anuncios: Anuncio[];
   cargando: boolean;
   error: string;
   filtros: Filtros;
+  vista: VistaConvocatorias;
 
+  cambiarVista: (vista: VistaConvocatorias) => void;
   cambiarFiltros: (cambios: Partial<Filtros>) => void;
   limpiarFiltros: () => void;
   recargar: () => Promise<void>;

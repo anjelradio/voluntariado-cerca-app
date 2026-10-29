@@ -25,6 +25,7 @@ import com.ithc.voluntarioserca.historial.EventoPostulacionRepository;
 class AnuncioServiceTest {
 
     private AnuncioRepository repository;
+    private InscripcionRepository inscripcionRepository;
     private EventoPostulacionRepository historial;
     private AnuncioService service;
     private User creador;
@@ -32,8 +33,9 @@ class AnuncioServiceTest {
     @BeforeEach
     void setUp() {
         repository = mock(AnuncioRepository.class);
+        inscripcionRepository = mock(InscripcionRepository.class);
         historial = mock(EventoPostulacionRepository.class);
-        service = new AnuncioService(repository, historial);
+        service = new AnuncioService(repository, inscripcionRepository, historial);
         creador = usuario(1L);
     }
 
@@ -50,17 +52,23 @@ class AnuncioServiceTest {
         anuncio.setFecha(LocalDate.now().plusDays(7).toString());
         anuncio.setCreador(creador);
         when(repository.findByIdForUpdate(10L)).thenReturn(Optional.of(anuncio));
+        when(repository.findById(10L)).thenReturn(Optional.of(anuncio));
         return anuncio;
     }
 
     @Test
-    void unaConvocatoriaAbiertaAceptaInscripciones() {
+    void unaConvocatoriaAbiertaAceptaInscripcionesComoPendientes() {
         Anuncio anuncio = nuevoAnuncio(5);
         User voluntario = usuario(2L);
 
         service.inscribirse(voluntario, 10L);
 
-        assertTrue(service.estaInscrito(anuncio, voluntario));
+        ArgumentCaptor<Inscripcion> captor = ArgumentCaptor.forClass(Inscripcion.class);
+        verify(inscripcionRepository).save(captor.capture());
+        assertEquals(EstadoInscripcion.pendiente, captor.getValue().getEstado());
+        assertEquals(voluntario, captor.getValue().getUsuario());
+        // No descuenta cupos aceptados
+        assertEquals(0, anuncio.getVoluntarios().size());
     }
 
     @Test
@@ -79,7 +87,7 @@ class AnuncioServiceTest {
     void noSePuedeInscribirDosVeces() {
         nuevoAnuncio(5);
         User voluntario = usuario(2L);
-        service.inscribirse(voluntario, 10L);
+        when(inscripcionRepository.existsByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(true);
 
         AnuncioException e = assertThrows(AnuncioException.class, () -> service.inscribirse(voluntario, 10L));
 
@@ -87,15 +95,13 @@ class AnuncioServiceTest {
     }
 
     @Test
-    void noSePuedeInscribirMasAllaDeLosCupos() {
+    void noSePuedeInscribirMasAllaDeLosCuposAceptados() {
         Anuncio anuncio = nuevoAnuncio(2);
-        service.inscribirse(usuario(2L), 10L);
-        service.inscribirse(usuario(3L), 10L);
+        when(inscripcionRepository.countByAnuncioIdAndEstado(10L, EstadoInscripcion.aceptado)).thenReturn(2L);
 
         AnuncioException e = assertThrows(AnuncioException.class, () -> service.inscribirse(usuario(4L), 10L));
 
         assertEquals("No quedan cupos disponibles", e.getMessage());
-        assertEquals(2, anuncio.getVoluntarios().size());
     }
 
     @Test
@@ -125,7 +131,7 @@ class AnuncioServiceTest {
         service.inscribirse(voluntario, 10L);
 
         assertEquals(Anuncio.Estado.abierta, anuncio.getEstado());
-        assertTrue(service.estaInscrito(anuncio, voluntario));
+        verify(inscripcionRepository).save(any(Inscripcion.class));
     }
 
     @Test
@@ -169,21 +175,21 @@ class AnuncioServiceTest {
     }
 
     @Test
-    void cancelarLaPostulacionLiberaElCupo() {
+    void cancelarLaPostulacionEliminaElRegistro() {
         Anuncio anuncio = nuevoAnuncio(1);
         User voluntario = usuario(2L);
-        service.inscribirse(voluntario, 10L);
+        Inscripcion inscripcion = new Inscripcion(anuncio, voluntario, EstadoInscripcion.pendiente);
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcion));
 
         service.cancelarPostulacion(voluntario, 10L);
 
-        assertEquals(0, anuncio.getVoluntarios().size());
-        service.inscribirse(usuario(3L), 10L);
-        assertEquals(1, anuncio.getVoluntarios().size());
+        verify(inscripcionRepository).delete(inscripcion);
     }
 
     @Test
     void noSePuedeCancelarSiNoEstabaInscrito() {
         nuevoAnuncio(5);
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.empty());
 
         AnuncioException e = assertThrows(AnuncioException.class, () -> service.cancelarPostulacion(usuario(2L), 10L));
 
@@ -209,8 +215,10 @@ class AnuncioServiceTest {
     void cancelarGuardaOtroEventoSinBorrarElAnterior() {
         nuevoAnuncio(5);
         User voluntario = usuario(2L);
-        service.inscribirse(voluntario, 10L);
+        Inscripcion inscripcion = new Inscripcion(null, voluntario, EstadoInscripcion.pendiente);
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcion));
 
+        service.inscribirse(voluntario, 10L);
         service.cancelarPostulacion(voluntario, 10L);
 
         ArgumentCaptor<EventoPostulacion> eventos = ArgumentCaptor.forClass(EventoPostulacion.class);
@@ -227,5 +235,115 @@ class AnuncioServiceTest {
         assertThrows(AnuncioException.class, () -> service.inscribirse(usuario(2L), 10L));
 
         verify(historial, never()).save(any());
+    }
+
+    @Test
+    void listarExplorarConsultaElRepositorioConFiltroYOrdenDescendente() {
+        AnuncioFiltro filtro = new AnuncioFiltro(null, null, null, null, null, null, false);
+        Anuncio anuncioAjeno = new Anuncio();
+        anuncioAjeno.setCreador(usuario(2L));
+        when(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(java.util.List.of(anuncioAjeno));
+
+        java.util.List<Anuncio> resultado = service.listarExplorar(creador, filtro);
+
+        assertEquals(1, resultado.size());
+        assertEquals(2L, resultado.get(0).getCreador().getId());
+        verify(repository).findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Sort.class));
+    }
+
+    @Test
+    void listarMisAnunciosConsultaElRepositorioConFiltroYOrdenDescendente() {
+        AnuncioFiltro filtro = new AnuncioFiltro(null, null, null, null, null, null, false);
+        Anuncio anuncioPropio = nuevoAnuncio(5);
+        when(repository.findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(java.util.List.of(anuncioPropio));
+
+        java.util.List<Anuncio> resultado = service.listarMisAnuncios(creador, filtro);
+
+        assertEquals(1, resultado.size());
+        assertEquals(creador.getId(), resultado.get(0).getCreador().getId());
+        verify(repository).findAll(any(org.springframework.data.jpa.domain.Specification.class), any(org.springframework.data.domain.Sort.class));
+    }
+
+    // --- Tests for US2 (T012) ---
+
+    @Test
+    void listarInscripcionesSoloPermitidoAlCreador() {
+        nuevoAnuncio(5);
+        User otro = usuario(2L);
+
+        AnuncioException e = assertThrows(AnuncioException.class, () -> service.listarInscripciones(otro, 10L));
+        assertEquals(403, e.getStatus());
+        assertEquals("Solo quien creó el anuncio puede ver la lista de postulantes", e.getMessage());
+
+        service.listarInscripciones(creador, 10L);
+        verify(inscripcionRepository).findByAnuncioId(10L);
+    }
+
+    @Test
+    void aceptarPostulanteCambiaEstadoAAceptado() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        User voluntario = usuario(2L);
+        Inscripcion inscripcion = new Inscripcion(anuncio, voluntario, EstadoInscripcion.pendiente);
+        when(inscripcionRepository.countByAnuncioIdAndEstado(10L, EstadoInscripcion.aceptado)).thenReturn(0L);
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcion));
+
+        service.aceptarPostulante(creador, 10L, 2L);
+
+        assertEquals(EstadoInscripcion.aceptado, inscripcion.getEstado());
+        verify(inscripcionRepository).save(inscripcion);
+    }
+
+    @Test
+    void aceptarPostulanteFallaSiNoQuedanCuposDisponibles() {
+        nuevoAnuncio(2);
+        when(inscripcionRepository.countByAnuncioIdAndEstado(10L, EstadoInscripcion.aceptado)).thenReturn(2L);
+
+        AnuncioException e = assertThrows(AnuncioException.class, () -> service.aceptarPostulante(creador, 10L, 2L));
+        assertEquals(409, e.getStatus());
+        assertEquals("No quedan cupos disponibles para aceptar más postulantes", e.getMessage());
+    }
+
+    @Test
+    void aceptarPostulanteSoloPermitidoAlCreador() {
+        nuevoAnuncio(2);
+        User otro = usuario(2L);
+
+        AnuncioException e = assertThrows(AnuncioException.class, () -> service.aceptarPostulante(otro, 10L, 3L));
+        assertEquals(403, e.getStatus());
+    }
+
+    @Test
+    void rechazarPostulanteEliminaLaInscripcion() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        User voluntario = usuario(2L);
+        Inscripcion inscripcion = new Inscripcion(anuncio, voluntario, EstadoInscripcion.pendiente);
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcion));
+
+        service.rechazarPostulante(creador, 10L, 2L);
+
+        verify(inscripcionRepository).delete(inscripcion);
+    }
+
+    @Test
+    void rechazarPostulanteSoloPermitidoAlCreador() {
+        nuevoAnuncio(2);
+        User otro = usuario(2L);
+
+        AnuncioException e = assertThrows(AnuncioException.class, () -> service.rechazarPostulante(otro, 10L, 3L));
+        assertEquals(403, e.getStatus());
+    }
+
+    @Test
+    void editarNoPermiteReducirCuposPorDebajoDeLosAceptados() {
+        nuevoAnuncio(5);
+        when(inscripcionRepository.countByAnuncioIdAndEstado(10L, EstadoInscripcion.aceptado)).thenReturn(4L);
+
+        AnuncioRequest req = new AnuncioRequest("Tit", "Org", "Desc", "2026-11-01", "Lug", 3, Anuncio.Causa.salud, Anuncio.Modalidad.presencial);
+
+        AnuncioException e = assertThrows(AnuncioException.class, () -> service.editar(creador, 10L, req));
+        assertEquals(400, e.getStatus());
+        assertEquals("Los cupos no pueden ser menos que los voluntarios ya aceptados", e.getMessage());
     }
 }

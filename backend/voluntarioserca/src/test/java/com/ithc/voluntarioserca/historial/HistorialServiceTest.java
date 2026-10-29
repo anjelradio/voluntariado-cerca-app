@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.ithc.voluntarioserca.anuncios.Anuncio;
+import com.ithc.voluntarioserca.anuncios.EstadoInscripcion;
+import com.ithc.voluntarioserca.anuncios.Inscripcion;
 import com.ithc.voluntarioserca.auth.User;
 
 // El estado de cada postulación se calcula con lo que pasa hoy en la convocatoria
@@ -36,7 +38,7 @@ class HistorialServiceTest {
 
     @Test
     void sigueActivaSiTodaviaEstaPostulado() {
-        anuncio.getVoluntarios().add(voluntario);
+        anuncio.getInscripciones().add(new Inscripcion(anuncio, voluntario, EstadoInscripcion.aceptado));
 
         assertEquals("activa", HistorialService.estado(evento(), hoy));
     }
@@ -48,7 +50,7 @@ class HistorialServiceTest {
 
     @Test
     void muestraCerradaSiElCreadorCerroLaConvocatoria() {
-        anuncio.getVoluntarios().add(voluntario);
+        anuncio.getInscripciones().add(new Inscripcion(anuncio, voluntario, EstadoInscripcion.aceptado));
         anuncio.setEstado(Anuncio.Estado.cerrada);
 
         assertEquals("cerrada", HistorialService.estado(evento(), hoy));
@@ -56,7 +58,7 @@ class HistorialServiceTest {
 
     @Test
     void muestraRealizadaSiLaFechaYaPaso() {
-        anuncio.getVoluntarios().add(voluntario);
+        anuncio.getInscripciones().add(new Inscripcion(anuncio, voluntario, EstadoInscripcion.aceptado));
         anuncio.setFecha("2026-10-15");
 
         assertEquals("realizada", HistorialService.estado(evento(), hoy));

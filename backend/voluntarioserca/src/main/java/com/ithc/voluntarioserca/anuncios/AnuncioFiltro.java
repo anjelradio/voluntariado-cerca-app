@@ -10,6 +10,8 @@ import org.springframework.data.jpa.domain.Specification;
 import com.ithc.voluntarioserca.auth.User;
 
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 
 // Búsqueda y filtros de convocatorias: cada campo vacío se omite y los demás se combinan con AND
 public record AnuncioFiltro(String q, Anuncio.Causa causa, Anuncio.Modalidad modalidad, String lugar,
@@ -44,11 +46,28 @@ public record AnuncioFiltro(String q, Anuncio.Causa causa, Anuncio.Modalidad mod
             if (disponibles) {
                 condiciones.add(cb.equal(root.get("estado"), Anuncio.Estado.abierta));
                 condiciones.add(cb.greaterThanOrEqualTo(root.get("fecha"), LocalDate.now().toString()));
-                condiciones.add(cb.lessThan(cb.size(root.<Set<User>>get("voluntarios")), root.<Integer>get("cupos")));
+                Subquery<Long> subquery = query.subquery(Long.class);
+                Root<Inscripcion> inscripcionRoot = subquery.from(Inscripcion.class);
+                subquery.select(cb.count(inscripcionRoot));
+                subquery.where(
+                        cb.equal(inscripcionRoot.get("anuncio"), root),
+                        cb.equal(inscripcionRoot.get("estado"), EstadoInscripcion.aceptado));
+                condiciones.add(cb.gt(root.get("cupos"), subquery));
             }
             return cb.and(condiciones.toArray(new Predicate[0]));
         };
     }
+
+    public Specification<Anuncio> toSpecificationExplorar(User user) {
+        return Specification.where(toSpecification())
+                .and((root, query, cb) -> user != null ? cb.notEqual(root.get("creador"), user) : cb.conjunction());
+    }
+
+    public Specification<Anuncio> toSpecificationMisAnuncios(User user) {
+        return Specification.where(toSpecification())
+                .and((root, query, cb) -> user != null ? cb.equal(root.get("creador"), user) : cb.disjunction());
+    }
+
 
     private static boolean tieneTexto(String valor) {
         return valor != null && !valor.isBlank();

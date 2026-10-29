@@ -187,6 +187,23 @@ textarea {
   color: #2e9e4f;
 }
 
+.aviso-pendiente {
+  color: #b26a00;
+  font-weight: 600;
+}
+
+.postulante-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.postulante-item:last-child {
+  border-bottom: none;
+}
+
 button:disabled {
   background: #bbb;
   cursor: not-allowed;
