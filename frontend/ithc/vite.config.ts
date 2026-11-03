@@ -7,5 +7,6 @@ export default defineConfig({
   test: {
     // Simula el navegador para poder renderizar componentes de React en los tests
     environment: 'jsdom',
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })

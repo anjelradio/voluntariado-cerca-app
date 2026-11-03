@@ -3,3 +3,11 @@
 .specify
 issues
 specs
+
+# Sensitive configuration & credentials
+**/src/main/resources/application.properties
+**/src/main/resources/application-*.properties
+!**/src/main/resources/application.properties.example
+*.env
+*.env.*
+!*.env.example

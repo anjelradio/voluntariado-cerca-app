@@ -119,11 +119,45 @@ describe("PostulantesPage", () => {
     expect((botonAceptar as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("muestra el mensaje de error si falla la carga o la acción", async () => {
-    vi.mocked(api.obtenerPostulantesRequest).mockRejectedValue(new Error("Solo quien creó el anuncio puede ver la lista de postulantes"));
+  it("muestra al voluntario promovido automáticamente en la lista de aceptados", async () => {
+    vi.mocked(api.obtenerPostulantesRequest).mockResolvedValue({
+      anuncioId: 10,
+      titulo: "Limpieza del Río Rocha",
+      organizacion: "Río Vivo",
+      cupos: 2,
+      aceptadosTotal: 2,
+      pendientes: [
+        {
+          id: 3,
+          usuarioId: 4,
+          nombre: "Lucía Morales",
+          email: "lucia@correo.com",
+          fechaSolicitud: "2026-10-29T17:00:00",
+        },
+      ],
+      aceptados: [
+        {
+          id: 1,
+          usuarioId: 2,
+          nombre: "Carlos Mendoza (Promovido)",
+          email: "carlos@correo.com",
+          fechaSolicitud: "2026-10-29T16:20:00",
+        },
+        {
+          id: 2,
+          usuarioId: 3,
+          nombre: "Ana Gómez",
+          email: "ana@correo.com",
+          fechaSolicitud: "2026-10-29T14:10:00",
+        },
+      ],
+    });
 
     mostrar();
 
-    expect(await screen.findByText("Solo quien creó el anuncio puede ver la lista de postulantes")).toBeTruthy();
+    expect(await screen.findByText("Carlos Mendoza (Promovido)")).toBeTruthy();
+    expect(screen.getByText("Ana Gómez")).toBeTruthy();
+    expect(screen.getByText("Lucía Morales")).toBeTruthy();
+    expect(screen.getByText(/Cupos aceptados: 2 de 2/)).toBeTruthy();
   });
 });

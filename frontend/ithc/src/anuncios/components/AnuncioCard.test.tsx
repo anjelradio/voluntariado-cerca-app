@@ -147,6 +147,17 @@ describe("Postulación", () => {
     expect(screen.queryByText(/4\/5/)).toBeNull();
   });
 
+  it("un voluntario promovido desde lista de espera ve que su estado cambió a aceptado y puede cancelar", async () => {
+    cancelarPostulacion.mockResolvedValue(undefined);
+    mostrar({ ...anuncio, creadorId: 8, miEstadoPostulacion: "aceptado", inscrito: true, inscritos: 2 });
+
+    expect(screen.getByText("✓ Estás postulado")).toBeTruthy();
+    expect(screen.queryByText("Solicitud en espera")).toBeNull();
+
+    fireEvent.click(screen.getByText("Cancelar postulación"));
+    await waitFor(() => expect(cancelarPostulacion).toHaveBeenCalledWith(1));
+  });
+
   it("después de postularse se confirma el resultado junto al botón", async () => {
     inscribirse.mockResolvedValue(undefined);
     mostrar({ ...anuncio, creadorId: 8 });

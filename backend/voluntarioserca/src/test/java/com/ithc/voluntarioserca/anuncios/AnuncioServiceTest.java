@@ -315,6 +315,19 @@ class AnuncioServiceTest {
     }
 
     @Test
+    void aceptarPostulanteFallaSiYaEstaAceptado() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        User voluntario = usuario(2L);
+        Inscripcion inscripcion = new Inscripcion(anuncio, voluntario, EstadoInscripcion.aceptado);
+        when(inscripcionRepository.countByAnuncioIdAndEstado(10L, EstadoInscripcion.aceptado)).thenReturn(1L);
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcion));
+
+        AnuncioException e = assertThrows(AnuncioException.class, () -> service.aceptarPostulante(creador, 10L, 2L));
+        assertEquals(409, e.getStatus());
+        assertEquals("El postulante ya ha sido aceptado", e.getMessage());
+    }
+
+    @Test
     void rechazarPostulanteEliminaLaInscripcion() {
         Anuncio anuncio = nuevoAnuncio(2);
         User voluntario = usuario(2L);
@@ -324,6 +337,18 @@ class AnuncioServiceTest {
         service.rechazarPostulante(creador, 10L, 2L);
 
         verify(inscripcionRepository).delete(inscripcion);
+    }
+
+    @Test
+    void rechazarPostulanteFallaSiYaEstaAceptado() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        User voluntario = usuario(2L);
+        Inscripcion inscripcion = new Inscripcion(anuncio, voluntario, EstadoInscripcion.aceptado);
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcion));
+
+        AnuncioException e = assertThrows(AnuncioException.class, () -> service.rechazarPostulante(creador, 10L, 2L));
+        assertEquals(409, e.getStatus());
+        assertEquals("Solo se pueden rechazar postulantes en estado pendiente", e.getMessage());
     }
 
     @Test
@@ -345,5 +370,80 @@ class AnuncioServiceTest {
         AnuncioException e = assertThrows(AnuncioException.class, () -> service.editar(creador, 10L, req));
         assertEquals(400, e.getStatus());
         assertEquals("Los cupos no pueden ser menos que los voluntarios ya aceptados", e.getMessage());
+    }
+
+    @Test
+    void cancelarPostulacionAceptadoConCuposLlenosPromueveAlPrimerPendiente() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        User voluntarioAceptado = usuario(2L);
+        Inscripcion inscripcionAceptada = new Inscripcion(anuncio, voluntarioAceptado, EstadoInscripcion.aceptado);
+        anuncio.getInscripciones().add(inscripcionAceptada);
+
+        User voluntarioPendiente = usuario(3L);
+        Inscripcion inscripcionPendiente = new Inscripcion(anuncio, voluntarioPendiente, EstadoInscripcion.pendiente);
+        anuncio.getInscripciones().add(inscripcionPendiente);
+
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcionAceptada));
+        when(inscripcionRepository.countByAnuncioIdAndEstado(10L, EstadoInscripcion.aceptado)).thenReturn(2L);
+        when(inscripcionRepository.findFirstByAnuncioIdAndEstadoOrderByFechaSolicitudAscIdAsc(10L, EstadoInscripcion.pendiente))
+                .thenReturn(Optional.of(inscripcionPendiente));
+
+        service.cancelarPostulacion(voluntarioAceptado, 10L);
+
+        verify(inscripcionRepository).delete(inscripcionAceptada);
+        verify(inscripcionRepository).save(inscripcionPendiente);
+        assertEquals(EstadoInscripcion.aceptado, inscripcionPendiente.getEstado());
+    }
+
+    @Test
+    void cancelarPostulacionAceptadoSinPendientesDejaCupoLibre() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        User voluntarioAceptado = usuario(2L);
+        Inscripcion inscripcionAceptada = new Inscripcion(anuncio, voluntarioAceptado, EstadoInscripcion.aceptado);
+
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcionAceptada));
+        when(inscripcionRepository.countByAnuncioIdAndEstado(10L, EstadoInscripcion.aceptado)).thenReturn(2L);
+        when(inscripcionRepository.findFirstByAnuncioIdAndEstadoOrderByFechaSolicitudAscIdAsc(10L, EstadoInscripcion.pendiente))
+                .thenReturn(Optional.empty());
+
+        service.cancelarPostulacion(voluntarioAceptado, 10L);
+
+        verify(inscripcionRepository).delete(inscripcionAceptada);
+        verify(inscripcionRepository, never()).save(any(Inscripcion.class));
+    }
+
+    @Test
+    void cancelarPostulacionPendienteNoPromueveANadie() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        User voluntarioPendiente = usuario(2L);
+        Inscripcion inscripcionPendiente = new Inscripcion(anuncio, voluntarioPendiente, EstadoInscripcion.pendiente);
+
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcionPendiente));
+
+        service.cancelarPostulacion(voluntarioPendiente, 10L);
+
+        verify(inscripcionRepository).delete(inscripcionPendiente);
+        verify(inscripcionRepository, never()).findFirstByAnuncioIdAndEstadoOrderByFechaSolicitudAscIdAsc(any(), any());
+        verify(inscripcionRepository, never()).save(any(Inscripcion.class));
+    }
+
+    @Test
+    void cancelarPostulacionConVariosPendientesRespetaOrdenFifo() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        User voluntarioAceptado = usuario(2L);
+        Inscripcion inscripcionAceptada = new Inscripcion(anuncio, voluntarioAceptado, EstadoInscripcion.aceptado);
+
+        User primeroEnCola = usuario(3L);
+        Inscripcion inscripcionPrimero = new Inscripcion(anuncio, primeroEnCola, EstadoInscripcion.pendiente);
+
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcionAceptada));
+        when(inscripcionRepository.countByAnuncioIdAndEstado(10L, EstadoInscripcion.aceptado)).thenReturn(2L);
+        when(inscripcionRepository.findFirstByAnuncioIdAndEstadoOrderByFechaSolicitudAscIdAsc(10L, EstadoInscripcion.pendiente))
+                .thenReturn(Optional.of(inscripcionPrimero));
+
+        service.cancelarPostulacion(voluntarioAceptado, 10L);
+
+        verify(inscripcionRepository).save(inscripcionPrimero);
+        assertEquals(EstadoInscripcion.aceptado, inscripcionPrimero.getEstado());
     }
 }

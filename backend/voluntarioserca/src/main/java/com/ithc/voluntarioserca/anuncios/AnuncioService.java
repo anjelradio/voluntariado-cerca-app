@@ -3,6 +3,7 @@ package com.ithc.voluntarioserca.anuncios;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -126,7 +127,9 @@ public class AnuncioService {
         return anuncio;
     }
 
-    // Control del usuario (H3): puede retirar su postulación mientras la actividad no se haya realizado
+    // Control del usuario (H3): puede retirar su postulación mientras la actividad no se haya realizado.
+    // Promoción automática: si el voluntario cancelado era aceptado y los cupos estaban llenos,
+    // el primer postulante en espera pasa automáticamente a aceptado (FIFO).
     public Anuncio cancelarPostulacion(User user, Long id) {
         Anuncio anuncio = buscarParaModificar(id);
         Inscripcion inscripcion = inscripcionRepository.findByAnuncioIdAndUsuarioId(anuncio.getId(), user.getId())
@@ -134,9 +137,32 @@ public class AnuncioService {
         if (LocalDate.parse(anuncio.getFecha()).isBefore(LocalDate.now())) {
             throw new AnuncioException(409, "La actividad ya se realizó; no se puede cancelar la postulación");
         }
+
+        boolean eraAceptado = inscripcion.getEstado() == EstadoInscripcion.aceptado;
+        long totalAceptadosAntes = inscripcionRepository.countByAnuncioIdAndEstado(anuncio.getId(), EstadoInscripcion.aceptado);
+
         inscripcionRepository.delete(inscripcion);
         anuncio.getInscripciones().removeIf(i -> i.getUsuario().getId().equals(user.getId()));
         historial.save(new EventoPostulacion(user, anuncio, EventoPostulacion.Tipo.cancelacion, LocalDateTime.now()));
+
+        if (eraAceptado && totalAceptadosAntes >= anuncio.getCupos()) {
+            Optional<Inscripcion> siguiente = inscripcionRepository
+                    .findFirstByAnuncioIdAndEstadoOrderByFechaSolicitudAscIdAsc(anuncio.getId(), EstadoInscripcion.pendiente);
+            if (siguiente.isPresent()) {
+                Inscripcion promo = siguiente.get();
+                promo.setEstado(EstadoInscripcion.aceptado);
+                inscripcionRepository.save(promo);
+                for (Inscripcion i : anuncio.getInscripciones()) {
+                    if (i.getId() != null && i.getId().equals(promo.getId())) {
+                        i.setEstado(EstadoInscripcion.aceptado);
+                    } else if (i.getUsuario() != null && promo.getUsuario() != null
+                            && i.getUsuario().getId().equals(promo.getUsuario().getId())) {
+                        i.setEstado(EstadoInscripcion.aceptado);
+                    }
+                }
+            }
+        }
+
         return anuncio;
     }
 
@@ -179,8 +205,16 @@ public class AnuncioService {
         }
         Inscripcion inscripcion = inscripcionRepository.findByAnuncioIdAndUsuarioId(anuncioId, usuarioId)
                 .orElseThrow(() -> new AnuncioException(404, "El postulante no tiene una solicitud para esta convocatoria"));
+        if (inscripcion.getEstado() == EstadoInscripcion.aceptado) {
+            throw new AnuncioException(409, "El postulante ya ha sido aceptado");
+        }
         inscripcion.setEstado(EstadoInscripcion.aceptado);
         inscripcionRepository.save(inscripcion);
+        for (Inscripcion i : anuncio.getInscripciones()) {
+            if (i.getUsuario() != null && usuarioId.equals(i.getUsuario().getId())) {
+                i.setEstado(EstadoInscripcion.aceptado);
+            }
+        }
     }
 
     public void rechazarPostulante(User user, Long anuncioId, Long usuarioId) {
@@ -188,6 +222,9 @@ public class AnuncioService {
         exigirCreador(anuncio, user, "rechazar postulantes");
         Inscripcion inscripcion = inscripcionRepository.findByAnuncioIdAndUsuarioId(anuncioId, usuarioId)
                 .orElseThrow(() -> new AnuncioException(404, "El postulante no tiene una solicitud para esta convocatoria"));
+        if (inscripcion.getEstado() != EstadoInscripcion.pendiente) {
+            throw new AnuncioException(409, "Solo se pueden rechazar postulantes en estado pendiente");
+        }
         inscripcionRepository.delete(inscripcion);
         anuncio.getInscripciones().removeIf(i -> i.getUsuario().getId().equals(usuarioId));
     }
