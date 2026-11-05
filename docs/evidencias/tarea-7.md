@@ -6,10 +6,10 @@
   https://github.com/ary10220/ihc_segundo_proyecto/commit/327eb90b67231a10381949428565970dbb8fec8f
 
 - **Enlace al Commit (Mejoras por Feedback — Resultados 1 y 2):**  
-  `[Pegar aquí el enlace al commit de mejoras por feedback](https://...)`
+  https://github.com/anjelradio/voluntariado-cerca-app/commit/9cf5c4b3c8e65cea294995a9bea27b72a041f63e
 
 - **Enlace al Commit (Nueva Funcionalidad de Clase):**  
-  `[Pendiente / Espacio reservado para el commit de la nueva funcionalidad](https://...)`
+  https://github.com/anjelradio/voluntariado-cerca-app/commit/63f413971c7c383fb3357bdd1493cb6db79d3447
 
 ---
 
@@ -126,7 +126,12 @@ Asimismo, se identificaron fallas críticas asociadas en la aplicación:
 
 ---
 
-## 4. Nueva Funcionalidad (Clase)
+## 4. Nueva Funcionalidad (Clase): Cancelación de Convocatoria con Motivo Obligatorio por la Organización
 
-<!-- Espacio reservado para la nueva funcionalidad que se nos pidió en clase. Se desarrollará e integrará posteriormente. -->
-- **Estado:** Pendiente de desarrollo según lo indicado en clase.
+Se implementó la funcionalidad para que el creador/organizador de una convocatoria pueda cancelarla de manera definitiva directamente desde la pantalla de gestión de postulantes (`/anuncios/:id/postulantes`):
+
+- **Cancelación por el organizador con motivo obligatorio:** En la cabecera de la pantalla de postulantes se incorporó el botón *"Cancelar oportunidad"*, el cual despliega un formulario inline con un campo de texto para ingresar la justificación obligatoria (mínimo 5 caracteres). Si el campo se envía vacío o incompleto, se muestra un mensaje de error visible en rojo y se bloquea la solicitud.
+- **Cancelación en cascada y auditoría:** Al confirmar la cancelación, la convocatoria cambia su estado a `cancelada` y almacena el motivo oficial. En una misma transacción atómica, todos los voluntarios en estado `pendiente` o `aceptado` pasan automáticamente a estado `cancelado`, registrando el evento de auditoría en la tabla física de historial (los voluntarios previamente `rechazado` conservan su estado para respetar las decisiones tomadas).
+- **Bloqueo de mutaciones y exclusión de Explorar:** Las convocatorias canceladas se excluyen automáticamente de la vista pública de exploración (`Explorar`) y el sistema bloquea cualquier intento posterior de postulación, aceptación o rechazo.
+- **Visibilidad para el voluntario en Mis Solicitudes:** Los voluntarios postulados pueden consultar el estado de su solicitud en la pestaña *"Canceladas"* de *"Mis solicitudes"*, donde se exhibe el badge rojo `Cancelada` junto con el motivo exacto registrado por la organización.
+
