@@ -36,6 +36,15 @@ const mockData: PostulantesConvocatoria = {
       fechaSolicitud: "2026-10-29T14:10:00",
     },
   ],
+  rechazados: [
+    {
+      id: 3,
+      usuarioId: 4,
+      nombre: "Pedro Ramírez",
+      email: "pedro@correo.com",
+      fechaSolicitud: "2026-10-29T12:00:00",
+    },
+  ],
 };
 
 const mostrar = (id = "10") =>
@@ -48,7 +57,7 @@ const mostrar = (id = "10") =>
   );
 
 describe("PostulantesPage", () => {
-  it("muestra la información de la convocatoria y las dos listas de postulantes", async () => {
+  it("muestra la información de la convocatoria y las tres listas de postulantes", async () => {
     vi.mocked(api.obtenerPostulantesRequest).mockResolvedValue(mockData);
 
     mostrar();
@@ -58,14 +67,16 @@ describe("PostulantesPage", () => {
     expect(screen.getByText(/Cupos aceptados: 1 de 2/)).toBeTruthy();
     expect(screen.getByText("Carlos Mendoza")).toBeTruthy();
     expect(screen.getByText("Ana Gómez")).toBeTruthy();
+    expect(screen.getByText("Pedro Ramírez")).toBeTruthy();
     expect(screen.getByText("← Volver al Dashboard")).toBeTruthy();
   });
 
-  it("muestra 'Sin resultados' cuando no hay postulantes pendientes ni aceptados", async () => {
+  it("muestra 'Sin resultados' cuando no hay postulantes pendientes, aceptados ni rechazados", async () => {
     vi.mocked(api.obtenerPostulantesRequest).mockResolvedValue({
       ...mockData,
       pendientes: [],
       aceptados: [],
+      rechazados: [],
       aceptadosTotal: 0,
     });
 
@@ -73,7 +84,7 @@ describe("PostulantesPage", () => {
 
     expect(await screen.findByText("Limpieza del Río Rocha")).toBeTruthy();
     const sinResultados = screen.getAllByText("Sin resultados");
-    expect(sinResultados.length).toBe(2);
+    expect(sinResultados.length).toBe(3);
   });
 
   it("al pulsar Aceptar se invoca la API y se recargan los datos", async () => {
@@ -151,6 +162,7 @@ describe("PostulantesPage", () => {
           fechaSolicitud: "2026-10-29T14:10:00",
         },
       ],
+      rechazados: [],
     });
 
     mostrar();

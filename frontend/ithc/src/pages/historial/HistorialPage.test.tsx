@@ -56,13 +56,15 @@ describe("Pantalla Mi historial", () => {
     ]);
     mostrar();
 
-    expect(await screen.findByText("Limpieza del parque")).toBeTruthy();
+    expect(await screen.findByText("Olla común")).toBeTruthy();
+    expect(screen.getByText("Postulación activa")).toBeTruthy();
+    expect(screen.queryByText("Limpieza del parque")).toBeNull();
+
+    fireEvent.click(screen.getByText("Canceladas (1)"));
+
+    expect(screen.getByText("Limpieza del parque")).toBeTruthy();
     expect(screen.getByText("Cancelaste tu postulación a")).toBeTruthy();
     expect(screen.getByText("Registrado el 20 de octubre de 2026, 18:30")).toBeTruthy();
-
-    fireEvent.click(screen.getByText("Activas (1)"));
-
-    expect(screen.queryByText("Limpieza del parque")).toBeNull();
-    expect(screen.getByText("Postulación activa")).toBeTruthy();
+    expect(screen.queryByText("Olla común")).toBeNull();
   });
 });

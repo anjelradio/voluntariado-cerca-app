@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ithc.voluntarioserca.anuncios.Anuncio;
+import com.ithc.voluntarioserca.anuncios.EstadoInscripcion;
+import com.ithc.voluntarioserca.anuncios.Inscripcion;
 import com.ithc.voluntarioserca.auth.User;
 
 @Service
@@ -38,10 +40,20 @@ public class HistorialService {
         if (anuncio == null) {
             return "eliminada";
         }
+        if (evento.getTipo() == EventoPostulacion.Tipo.rechazo) {
+            return "rechazada";
+        }
         Long usuarioId = evento.getUsuario().getId();
-        boolean sigue = anuncio.getVoluntarios().stream().anyMatch(v -> v.getId().equals(usuarioId));
-        if (!sigue) {
+        Inscripcion inscripcion = anuncio.getInscripciones().stream()
+                .filter(i -> i.getUsuario() != null && usuarioId.equals(i.getUsuario().getId()))
+                .findFirst()
+                .orElse(null);
+
+        if (inscripcion == null) {
             return "cancelada";
+        }
+        if (inscripcion.getEstado() == EstadoInscripcion.rechazado) {
+            return "rechazada";
         }
         if (LocalDate.parse(anuncio.getFecha()).isBefore(hoy)) {
             return "realizada";
@@ -49,6 +61,9 @@ public class HistorialService {
         if (anuncio.getEstado() == Anuncio.Estado.cerrada) {
             return "cerrada";
         }
-        return "activa";
+        if (inscripcion.getEstado() == EstadoInscripcion.aceptado) {
+            return "aceptada";
+        }
+        return "en_espera";
     }
 }

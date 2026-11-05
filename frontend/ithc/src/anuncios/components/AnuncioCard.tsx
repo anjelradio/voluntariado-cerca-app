@@ -55,13 +55,22 @@ export const AnuncioCard = ({ anuncio }: AnuncioCardProps) => {
       </p>
       <p>{anuncio.descripcion}</p>
       <p className="detalle">
-        {anuncio.organizacion} · {anuncio.lugar} · {fechaLegible(anuncio.fecha)}
+        <strong>Organización:</strong> {anuncio.organizacion} · <strong>Lugar:</strong> {anuncio.lugar} ·{" "}
+        <strong>Fecha:</strong> {fechaLegible(anuncio.fecha)}
       </p>
       {(anuncio.causa || anuncio.modalidad) && (
         <p className="detalle">
-          {[anuncio.causa && CAUSAS[anuncio.causa], anuncio.modalidad && MODALIDADES[anuncio.modalidad]]
-            .filter(Boolean)
-            .join(" · ")}
+          {anuncio.causa && (
+            <span>
+              <strong>Causa:</strong> {CAUSAS[anuncio.causa]}
+            </span>
+          )}
+          {anuncio.causa && anuncio.modalidad && " · "}
+          {anuncio.modalidad && (
+            <span>
+              <strong>Modalidad:</strong> {MODALIDADES[anuncio.modalidad]}
+            </span>
+          )}
         </p>
       )}
       <p className="detalle">

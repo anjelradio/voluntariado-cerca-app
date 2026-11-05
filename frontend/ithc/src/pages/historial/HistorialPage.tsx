@@ -19,7 +19,7 @@ export const HistorialPage = () => {
   const [eventos, setEventos] = useState<EventoHistorial[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
-  const [pestana, setPestana] = useState<Pestana>("todas");
+  const [pestana, setPestana] = useState<Pestana>("aceptadas");
 
   // Los eventos vienen de la base de datos, ya ordenados del más reciente al más antiguo
   useEffect(() => {
@@ -38,8 +38,8 @@ export const HistorialPage = () => {
 
   return (
     <div className="card">
-      <h2>Mi historial</h2>
-      <p className="ayuda">Tus postulaciones y cancelaciones, de la más reciente a la más antigua.</p>
+      <h2>Mis solicitudes</h2>
+      <p className="ayuda">Tus solicitudes y su estado actual, de la más reciente a la más antigua.</p>
 
       {cargando && <p>Cargando...</p>}
       {error && <p className="error">{error}</p>}
@@ -67,7 +67,7 @@ export const HistorialPage = () => {
             ))}
           </div>
 
-          {visibles.length === 0 && <p className="detalle">No hay postulaciones en esta pestaña.</p>}
+          {visibles.length === 0 && <p className="detalle">No hay solicitudes en esta pestaña.</p>}
 
           {visibles.map((e) => (
             <div key={e.id} className="anuncio evento">
@@ -75,11 +75,14 @@ export const HistorialPage = () => {
                 {TIPOS[e.tipo]} <strong>{e.titulo}</strong>
               </p>
               <p className="detalle">
-                {e.organizacion} · actividad el {fechaLegible(e.fechaActividad)}
+                <strong>Organización:</strong> {e.organizacion} · <strong>Actividad el:</strong>{" "}
+                {fechaLegible(e.fechaActividad)}
               </p>
               <p className="detalle">Registrado el {fechaHoraLegible(e.fecha)}</p>
               <p>
-                <span className={`estado-postulacion ${e.estado}`}>{ESTADOS_POSTULACION[e.estado]}</span>
+                <span className={`estado-postulacion ${e.estado}`}>
+                  {ESTADOS_POSTULACION[e.estado] ?? e.estado}
+                </span>
               </p>
             </div>
           ))}

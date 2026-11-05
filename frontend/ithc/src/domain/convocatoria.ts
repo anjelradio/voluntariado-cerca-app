@@ -36,7 +36,7 @@ export interface Anuncio extends Omit<AnuncioDatos, "causa" | "modalidad"> {
   creadorNombre: string;
   inscritos: number;
   inscrito: boolean;
-  miEstadoPostulacion?: "pendiente" | "aceptado" | null;
+  miEstadoPostulacion?: "pendiente" | "aceptado" | "rechazado" | null;
   postulados: Postulado[];
 }
 
@@ -61,6 +61,7 @@ export interface PostulantesConvocatoria {
   aceptadosTotal: number;
   pendientes: Postulante[];
   aceptados: Postulante[];
+  rechazados: Postulante[];
 }
 
 

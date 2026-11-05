@@ -17,7 +17,7 @@ export const Dashboard = () => {
       <p>{user?.email}</p>
 
       <Link to="/historial" className="boton-grande">
-        Mi historial
+        Mis solicitudes
       </Link>
       <Link to="/crear-anuncio">Crear anuncio</Link>
 
@@ -40,6 +40,15 @@ export const Dashboard = () => {
         >
           Mis anuncios
         </button>
+        <Link
+          to="/historial"
+          role="tab"
+          aria-selected={false}
+          className="pestana"
+          style={{ textAlign: "center", textDecoration: "none" }}
+        >
+          Mis solicitudes
+        </Link>
       </div>
 
       <h3>Convocatorias</h3>

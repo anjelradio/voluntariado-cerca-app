@@ -115,6 +115,21 @@ export const PostulantesPage = () => {
         </div>
       )}
 
+      <h3>Postulantes rechazados</h3>
+      {!data || !data.rechazados || data.rechazados.length === 0 ? (
+        <p className="detalle">Sin resultados</p>
+      ) : (
+        <div className="lista-postulantes">
+          {data.rechazados.map((p) => (
+            <div key={p.id} className="postulante-item">
+              <div>
+                <strong>{p.nombre}</strong> <span className="detalle">({p.email})</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <Link to="/dashboard">← Volver al Dashboard</Link>
     </div>
   );

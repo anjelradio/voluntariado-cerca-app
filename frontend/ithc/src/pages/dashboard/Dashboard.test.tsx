@@ -49,13 +49,16 @@ describe("Dashboard - Explorar y Mis Anuncios", () => {
 
     const tabExplorar = screen.getByRole("tab", { name: "Explorar" });
     const tabMisAnuncios = screen.getByRole("tab", { name: "Mis anuncios" });
+    const tabMisSolicitudes = screen.getByRole("tab", { name: "Mis solicitudes" });
 
     expect(tabExplorar).toBeTruthy();
     expect(tabMisAnuncios).toBeTruthy();
+    expect(tabMisSolicitudes).toBeTruthy();
     expect(tabExplorar.getAttribute("aria-selected")).toBe("true");
     expect(tabMisAnuncios.getAttribute("aria-selected")).toBe("false");
     expect(tabExplorar.className).toContain("pestana activa");
     expect(tabMisAnuncios.className).toBe("pestana");
+    expect(screen.getAllByRole("link", { name: "Mis solicitudes" }).length).toBeGreaterThan(0);
   });
 
   it("al pulsar en 'Mis anuncios' o 'Explorar' invoca cambiarVista con el argumento correspondiente", () => {

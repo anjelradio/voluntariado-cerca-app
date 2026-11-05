@@ -328,7 +328,7 @@ class AnuncioServiceTest {
     }
 
     @Test
-    void rechazarPostulanteEliminaLaInscripcion() {
+    void rechazarPostulanteCambiaEstadoARechazadoYGuardaHistorial() {
         Anuncio anuncio = nuevoAnuncio(2);
         User voluntario = usuario(2L);
         Inscripcion inscripcion = new Inscripcion(anuncio, voluntario, EstadoInscripcion.pendiente);
@@ -336,7 +336,22 @@ class AnuncioServiceTest {
 
         service.rechazarPostulante(creador, 10L, 2L);
 
-        verify(inscripcionRepository).delete(inscripcion);
+        assertEquals(EstadoInscripcion.rechazado, inscripcion.getEstado());
+        verify(inscripcionRepository).save(inscripcion);
+        verify(historial).save(any(EventoPostulacion.class));
+    }
+
+    @Test
+    void cancelarPostulacionFallaSiFueRechazado() {
+        Anuncio anuncio = nuevoAnuncio(2);
+        anuncio.setFecha("2099-01-01");
+        User voluntario = usuario(2L);
+        Inscripcion inscripcion = new Inscripcion(anuncio, voluntario, EstadoInscripcion.rechazado);
+        when(inscripcionRepository.findByAnuncioIdAndUsuarioId(10L, 2L)).thenReturn(Optional.of(inscripcion));
+
+        AnuncioException e = assertThrows(AnuncioException.class, () -> service.cancelarPostulacion(voluntario, 10L));
+        assertEquals(409, e.getStatus());
+        assertEquals("Tu postulación ya fue rechazada; no se puede cancelar", e.getMessage());
     }
 
     @Test

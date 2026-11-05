@@ -21,7 +21,7 @@ import jakarta.persistence.Table;
 @Table(name = "historial_postulaciones")
 public class EventoPostulacion {
 
-    public enum Tipo { postulacion, cancelacion }
+    public enum Tipo { postulacion, cancelacion, rechazo }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

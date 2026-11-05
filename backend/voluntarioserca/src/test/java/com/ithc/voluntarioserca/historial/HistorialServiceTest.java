@@ -37,10 +37,30 @@ class HistorialServiceTest {
     }
 
     @Test
-    void sigueActivaSiTodaviaEstaPostulado() {
+    void sigueAceptadaSiTodaviaEstaPostuladoYAceptado() {
         anuncio.getInscripciones().add(new Inscripcion(anuncio, voluntario, EstadoInscripcion.aceptado));
 
-        assertEquals("activa", HistorialService.estado(evento(), hoy));
+        assertEquals("aceptada", HistorialService.estado(evento(), hoy));
+    }
+
+    @Test
+    void muestraEnEsperaSiEstaPendiente() {
+        anuncio.getInscripciones().add(new Inscripcion(anuncio, voluntario, EstadoInscripcion.pendiente));
+
+        assertEquals("en_espera", HistorialService.estado(evento(), hoy));
+    }
+
+    @Test
+    void muestraRechazadaSiLaInscripcionFueRechazada() {
+        anuncio.getInscripciones().add(new Inscripcion(anuncio, voluntario, EstadoInscripcion.rechazado));
+
+        assertEquals("rechazada", HistorialService.estado(evento(), hoy));
+    }
+
+    @Test
+    void muestraRechazadaSiElEventoEsDeTipoRechazo() {
+        EventoPostulacion evRechazo = new EventoPostulacion(voluntario, anuncio, EventoPostulacion.Tipo.rechazo, LocalDateTime.now());
+        assertEquals("rechazada", HistorialService.estado(evRechazo, hoy));
     }
 
     @Test

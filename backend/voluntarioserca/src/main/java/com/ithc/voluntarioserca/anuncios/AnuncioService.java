@@ -134,6 +134,9 @@ public class AnuncioService {
         Anuncio anuncio = buscarParaModificar(id);
         Inscripcion inscripcion = inscripcionRepository.findByAnuncioIdAndUsuarioId(anuncio.getId(), user.getId())
                 .orElseThrow(() -> new AnuncioException(409, "No te postulaste a esta convocatoria"));
+        if (inscripcion.getEstado() == EstadoInscripcion.rechazado) {
+            throw new AnuncioException(409, "Tu postulación ya fue rechazada; no se puede cancelar");
+        }
         if (LocalDate.parse(anuncio.getFecha()).isBefore(LocalDate.now())) {
             throw new AnuncioException(409, "La actividad ya se realizó; no se puede cancelar la postulación");
         }
@@ -225,8 +228,14 @@ public class AnuncioService {
         if (inscripcion.getEstado() != EstadoInscripcion.pendiente) {
             throw new AnuncioException(409, "Solo se pueden rechazar postulantes en estado pendiente");
         }
-        inscripcionRepository.delete(inscripcion);
-        anuncio.getInscripciones().removeIf(i -> i.getUsuario().getId().equals(usuarioId));
+        inscripcion.setEstado(EstadoInscripcion.rechazado);
+        inscripcionRepository.save(inscripcion);
+        for (Inscripcion i : anuncio.getInscripciones()) {
+            if (i.getUsuario() != null && usuarioId.equals(i.getUsuario().getId())) {
+                i.setEstado(EstadoInscripcion.rechazado);
+            }
+        }
+        historial.save(new EventoPostulacion(inscripcion.getUsuario(), anuncio, EventoPostulacion.Tipo.rechazo, LocalDateTime.now()));
     }
 
     private Anuncio buscarParaModificar(Long id) {

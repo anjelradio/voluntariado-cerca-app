@@ -32,7 +32,7 @@ public class AnuncioController {
     record Postulado(Long id, String nombre) {}
     record PostulanteDto(Long id, Long usuarioId, String nombre, String email, String fechaSolicitud) {}
     record PostulantesResponse(Long anuncioId, String titulo, String organizacion, int cupos, int aceptadosTotal,
-            List<PostulanteDto> pendientes, List<PostulanteDto> aceptados) {}
+            List<PostulanteDto> pendientes, List<PostulanteDto> aceptados, List<PostulanteDto> rechazados) {}
     record AnuncioResponse(Long id, String titulo, String organizacion, String descripcion, String fecha, String lugar,
             int cupos, String causa, String modalidad, String estado, Long creadorId, String creadorNombre, int inscritos, boolean inscrito,
             String miEstadoPostulacion, List<Postulado> postulados) {}
@@ -171,10 +171,16 @@ public class AnuncioController {
                         i.getUsuario().getEmail(), i.getFechaSolicitud().toString()))
                 .toList();
 
+        List<PostulanteDto> rechazados = inscripciones.stream()
+                .filter(i -> i.getEstado() == EstadoInscripcion.rechazado)
+                .map(i -> new PostulanteDto(i.getId(), i.getUsuario().getId(), i.getUsuario().getName(),
+                        i.getUsuario().getEmail(), i.getFechaSolicitud().toString()))
+                .toList();
+
         int aceptadosTotal = aceptados.size();
 
         return ResponseEntity.ok(new PostulantesResponse(anuncio.getId(), anuncio.getTitulo(),
-                anuncio.getOrganizacion(), anuncio.getCupos(), aceptadosTotal, pendientes, aceptados));
+                anuncio.getOrganizacion(), anuncio.getCupos(), aceptadosTotal, pendientes, aceptados, rechazados));
     }
 
     @PostMapping("/{id}/postulantes/{usuarioId}/aceptar")

@@ -167,3 +167,16 @@ describe("Postulación", () => {
     expect(await screen.findByText("Postulación enviada. Tu solicitud está en espera.")).toBeTruthy();
   });
 });
+
+describe("Etiquetas descriptivas", () => {
+  it("muestra etiquetas explícitas para Organización, Lugar, Fecha, Causa y Modalidad", () => {
+    mostrar(anuncio);
+
+    expect(screen.getByText("Organización:")).toBeTruthy();
+    expect(screen.getByText("Lugar:")).toBeTruthy();
+    expect(screen.getByText("Fecha:")).toBeTruthy();
+    expect(screen.getByText("Causa:")).toBeTruthy();
+    expect(screen.getByText("Modalidad:")).toBeTruthy();
+  });
+});
+
