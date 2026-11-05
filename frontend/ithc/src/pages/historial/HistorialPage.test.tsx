@@ -67,4 +67,27 @@ describe("Pantalla Mi historial", () => {
     expect(screen.getByText("Registrado el 20 de octubre de 2026, 18:30")).toBeTruthy();
     expect(screen.queryByText("Olla común")).toBeNull();
   });
+
+  it("muestra el motivo de cancelación cuando la postulación está cancelada", async () => {
+    vi.mocked(historialRequest).mockResolvedValue([
+      {
+        id: 1,
+        tipo: "postulacion",
+        fecha: "2026-10-20T18:30:00",
+        anuncioId: 10,
+        titulo: "Reforestación urbana",
+        organizacion: "Verde Urbano",
+        fechaActividad: "2026-10-25",
+        estado: "cancelada",
+        motivoCancelacion: "Suspendida por condiciones climáticas adversas",
+      },
+    ]);
+    mostrar();
+
+    fireEvent.click(await screen.findByText("Canceladas (1)"));
+
+    expect(screen.getByText("Reforestación urbana")).toBeTruthy();
+    expect(screen.getByText(/Motivo de cancelación:/)).toBeTruthy();
+    expect(screen.getByText(/Suspendida por condiciones climáticas adversas/)).toBeTruthy();
+  });
 });

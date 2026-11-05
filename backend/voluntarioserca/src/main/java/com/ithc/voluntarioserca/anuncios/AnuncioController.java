@@ -31,10 +31,11 @@ public class AnuncioController {
 
     record Postulado(Long id, String nombre) {}
     record PostulanteDto(Long id, Long usuarioId, String nombre, String email, String fechaSolicitud) {}
-    record PostulantesResponse(Long anuncioId, String titulo, String organizacion, int cupos, int aceptadosTotal,
+    record CancelarAnuncioRequest(String motivo) {}
+    record PostulantesResponse(Long anuncioId, String titulo, String organizacion, int cupos, String estado, String motivoCancelacion, int aceptadosTotal,
             List<PostulanteDto> pendientes, List<PostulanteDto> aceptados, List<PostulanteDto> rechazados) {}
     record AnuncioResponse(Long id, String titulo, String organizacion, String descripcion, String fecha, String lugar,
-            int cupos, String causa, String modalidad, String estado, Long creadorId, String creadorNombre, int inscritos, boolean inscrito,
+            int cupos, String causa, String modalidad, String estado, String motivoCancelacion, Long creadorId, String creadorNombre, int inscritos, boolean inscrito,
             String miEstadoPostulacion, List<Postulado> postulados) {}
 
     private final AnuncioService anuncioService;
@@ -180,7 +181,22 @@ public class AnuncioController {
         int aceptadosTotal = aceptados.size();
 
         return ResponseEntity.ok(new PostulantesResponse(anuncio.getId(), anuncio.getTitulo(),
-                anuncio.getOrganizacion(), anuncio.getCupos(), aceptadosTotal, pendientes, aceptados, rechazados));
+                anuncio.getOrganizacion(), anuncio.getCupos(), anuncio.getEstado().name(), anuncio.getMotivoCancelacion(),
+                aceptadosTotal, pendientes, aceptados, rechazados));
+    }
+
+    @PostMapping("/{id}/cancelar")
+    public ResponseEntity<?> cancelar(@RequestHeader(value = "Authorization", required = false) String header,
+            @PathVariable Long id, @RequestBody(required = false) CancelarAnuncioRequest req) {
+        User user = usuarioDeSesion(header);
+        String motivo = req != null ? req.motivo() : null;
+        Anuncio cancelado = anuncioService.cancelarAnuncio(user, id, motivo);
+        return ResponseEntity.ok(Map.of(
+                "message", "Convocatoria cancelada exitosamente",
+                "id", cancelado.getId(),
+                "estado", cancelado.getEstado().name(),
+                "motivoCancelacion", cancelado.getMotivoCancelacion() != null ? cancelado.getMotivoCancelacion() : ""
+        ));
     }
 
     @PostMapping("/{id}/postulantes/{usuarioId}/aceptar")
@@ -226,7 +242,7 @@ public class AnuncioController {
 
         return new AnuncioResponse(a.getId(), a.getTitulo(), a.getOrganizacion(), a.getDescripcion(), a.getFecha(),
                 a.getLugar(), a.getCupos(), nombre(a.getCausa()), nombre(a.getModalidad()), a.getEstado().name(),
-                creadorId, creadorNombre, inscritos, inscrito, miEstadoPostulacion, postulados(a, user));
+                a.getMotivoCancelacion(), creadorId, creadorNombre, inscritos, inscrito, miEstadoPostulacion, postulados(a, user));
     }
 
     // Los anuncios creados antes de agregar causa y modalidad las tienen en null

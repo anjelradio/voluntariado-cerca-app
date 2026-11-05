@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
 import {
   aceptarPostulanteRequest,
+  cancelarAnuncioRequest,
   obtenerPostulantesRequest,
   rechazarPostulanteRequest,
 } from "../../api/anunciosApi";
@@ -16,6 +17,11 @@ export const PostulantesPage = () => {
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
 
+  const [mostrandoCancelar, setMostrandoCancelar] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [errorMotivo, setErrorMotivo] = useState("");
+  const [cancelando, setCancelando] = useState(false);
+
   const recargar = () => obtenerPostulantesRequest(anuncioId).then(setData);
 
   useEffect(() => {
@@ -25,6 +31,8 @@ export const PostulantesPage = () => {
       .catch((err) => setError((err as Error).message))
       .finally(() => setCargando(false));
   }, [anuncioId]);
+
+  const estaCancelado = data?.estado === "cancelada";
 
   const aceptar = async (usuarioId: number) => {
     setError("");
@@ -50,6 +58,37 @@ export const PostulantesPage = () => {
     }
   };
 
+  const confirmarCancelar = async () => {
+    if (!motivo.trim()) {
+      setErrorMotivo("El motivo de cancelación es obligatorio");
+      return;
+    }
+    if (motivo.trim().length < 5) {
+      setErrorMotivo("El motivo de cancelación debe tener al menos 5 caracteres");
+      return;
+    }
+    setErrorMotivo("");
+    setError("");
+    setCancelando(true);
+    try {
+      const res = await cancelarAnuncioRequest(anuncioId, motivo.trim());
+      setMensaje(res.message || "Convocatoria cancelada exitosamente");
+      setMostrandoCancelar(false);
+      setMotivo("");
+      await recargar();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setCancelando(false);
+    }
+  };
+
+  const cancelarFormulario = () => {
+    setMostrandoCancelar(false);
+    setMotivo("");
+    setErrorMotivo("");
+  };
+
   if (cargando) return <p>Cargando postulantes...</p>;
 
   return (
@@ -59,8 +98,60 @@ export const PostulantesPage = () => {
       {data && (
         <p className="detalle">
           <strong>{data.titulo}</strong> · {data.organizacion} · Cupos aceptados: {data.aceptadosTotal} de {data.cupos}
+          {estaCancelado && <span> · <strong className="error">Cancelada</strong></span>}
         </p>
       )}
+
+      <div style={{ marginBottom: "1rem" }}>
+        <button
+          type="button"
+          className="secundario"
+          disabled={estaCancelado}
+          onClick={() => {
+            setErrorMotivo("");
+            setMostrandoCancelar((prev) => !prev);
+          }}
+        >
+          {estaCancelado ? "Oportunidad cancelada" : "Cancelar oportunidad"}
+        </button>
+
+        {mostrandoCancelar && !estaCancelado && (
+          <div style={{ marginTop: "0.75rem", maxWidth: "450px" }}>
+            <label htmlFor="motivo-cancelacion" style={{ display: "block", marginBottom: "0.25rem" }}>
+              Motivo de cancelación:
+            </label>
+            <input
+              id="motivo-cancelacion"
+              type="text"
+              placeholder="Escribe el motivo de la cancelación..."
+              value={motivo}
+              onChange={(e) => {
+                setMotivo(e.target.value);
+                if (errorMotivo) setErrorMotivo("");
+              }}
+              style={{ width: "100%", padding: "0.5rem", boxSizing: "border-box" }}
+            />
+            {errorMotivo && <p className="error" style={{ margin: "0.25rem 0" }}>{errorMotivo}</p>}
+            <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}>
+              <button
+                type="button"
+                className="secundario"
+                onClick={cancelarFormulario}
+                disabled={cancelando}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmarCancelar}
+                disabled={cancelando}
+              >
+                {cancelando ? "Cancelando..." : "Confirmar"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {mensaje && (
         <p className="confirmacion" role="status">
@@ -79,22 +170,24 @@ export const PostulantesPage = () => {
               <div>
                 <strong>{p.nombre}</strong> <span className="detalle">({p.email})</span>
               </div>
-              <div className="acciones">
-                <button
-                  type="button"
-                  onClick={() => aceptar(p.usuarioId)}
-                  disabled={data.aceptadosTotal >= data.cupos}
-                >
-                  Aceptar
-                </button>
-                <button
-                  type="button"
-                  className="secundario"
-                  onClick={() => rechazar(p.usuarioId)}
-                >
-                  Rechazar
-                </button>
-              </div>
+              {!estaCancelado && (
+                <div className="acciones">
+                  <button
+                    type="button"
+                    onClick={() => aceptar(p.usuarioId)}
+                    disabled={data.aceptadosTotal >= data.cupos}
+                  >
+                    Aceptar
+                  </button>
+                  <button
+                    type="button"
+                    className="secundario"
+                    onClick={() => rechazar(p.usuarioId)}
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -35,3 +35,10 @@ export const aceptarPostulanteRequest = (anuncioId: number, usuarioId: number) =
 
 export const rechazarPostulanteRequest = (anuncioId: number, usuarioId: number) =>
   request<{ message: string }>("POST", `/anuncios/${anuncioId}/postulantes/${usuarioId}/rechazar`);
+
+export const cancelarAnuncioRequest = (id: number, motivo: string) =>
+  request<{ message: string; id: number; estado: string; motivoCancelacion: string }>(
+    "POST",
+    `/anuncios/${id}/cancelar`,
+    { motivo },
+  );

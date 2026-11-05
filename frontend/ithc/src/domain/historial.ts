@@ -21,6 +21,7 @@ export interface EventoHistorial {
   organizacion: string;
   fechaActividad: string;
   estado: EstadoPostulacion;
+  motivoCancelacion?: string | null;
 }
 
 export const TIPOS: Record<TipoEvento, string> = {

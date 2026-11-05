@@ -52,6 +52,9 @@ public class EventoPostulacion {
     @Column(nullable = false)
     private LocalDateTime fecha;
 
+    @Column(length = 500)
+    private String motivo;
+
     protected EventoPostulacion() {}
 
     public EventoPostulacion(User usuario, Anuncio anuncio, Tipo tipo, LocalDateTime fecha) {
@@ -64,6 +67,11 @@ public class EventoPostulacion {
         this.fecha = fecha;
     }
 
+    public EventoPostulacion(User usuario, Anuncio anuncio, Tipo tipo, LocalDateTime fecha, String motivo) {
+        this(usuario, anuncio, tipo, fecha);
+        this.motivo = motivo;
+    }
+
     public Long getId() { return id; }
     public User getUsuario() { return usuario; }
     public Anuncio getAnuncio() { return anuncio; }
@@ -72,4 +80,6 @@ public class EventoPostulacion {
     public String getFechaActividad() { return fechaActividad; }
     public Tipo getTipo() { return tipo; }
     public LocalDateTime getFecha() { return fecha; }
+    public String getMotivo() { return motivo; }
+    public void setMotivo(String motivo) { this.motivo = motivo; }
 }

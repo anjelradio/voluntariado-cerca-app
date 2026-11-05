@@ -60,6 +60,7 @@ public record AnuncioFiltro(String q, Anuncio.Causa causa, Anuncio.Modalidad mod
 
     public Specification<Anuncio> toSpecificationExplorar(User user) {
         return Specification.where(toSpecification())
+                .and((root, query, cb) -> cb.notEqual(root.get("estado"), Anuncio.Estado.cancelada))
                 .and((root, query, cb) -> user != null ? cb.notEqual(root.get("creador"), user) : cb.conjunction());
     }
 

@@ -1,6 +1,7 @@
 package com.ithc.voluntarioserca.anuncios;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -144,5 +145,28 @@ class AnuncioFiltroTest {
                 .stream().map(Anuncio::getTitulo).sorted().toList();
         assertEquals(List.of("Campaña de vacunación", "Clases de lectura", "Limpieza del río", "Tutorías de matemática"),
                 enMisAnuncios);
+    }
+
+    @Test
+    void explorarExcluyeConvocatoriasCanceladas() {
+        User otro = usuario("Elena", "elena@test.com");
+        Anuncio aCancelada = new Anuncio();
+        aCancelada.setTitulo("Taller de reciclaje");
+        aCancelada.setOrganizacion("EcoActiva");
+        aCancelada.setDescripcion("Reciclaje urbano");
+        aCancelada.setCausa(Causa.medio_ambiente);
+        aCancelada.setModalidad(Modalidad.presencial);
+        aCancelada.setLugar("Cochabamba");
+        aCancelada.setFecha("2099-05-01");
+        aCancelada.setCupos(15);
+        aCancelada.setEstado(Anuncio.Estado.cancelada);
+        aCancelada.setCreador(otro);
+        em.persist(aCancelada);
+        em.flush();
+
+        AnuncioFiltro filtro = new AnuncioFiltro(null, null, null, null, null, null, false);
+        List<String> enExplorar = repository.findAll(filtro.toSpecificationExplorar(creador))
+                .stream().map(Anuncio::getTitulo).toList();
+        assertFalse(enExplorar.contains("Taller de reciclaje"));
     }
 }

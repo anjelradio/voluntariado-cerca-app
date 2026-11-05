@@ -16,7 +16,7 @@ import com.ithc.voluntarioserca.auth.User;
 public class HistorialService {
 
     public record EventoResponse(Long id, String tipo, String fecha, Long anuncioId, String titulo, String organizacion,
-            String fechaActividad, String estado) {}
+            String fechaActividad, String estado, String motivoCancelacion) {}
 
     private final EventoPostulacionRepository historial;
 
@@ -28,10 +28,27 @@ public class HistorialService {
     public List<EventoResponse> listar(User user) {
         LocalDate hoy = LocalDate.now();
         return historial.findByUsuarioIdOrderByFechaDescIdDesc(user.getId()).stream()
-                .map(e -> new EventoResponse(e.getId(), e.getTipo().name(), e.getFecha().toString(),
-                        e.getAnuncio() == null ? null : e.getAnuncio().getId(), e.getTitulo(), e.getOrganizacion(),
-                        e.getFechaActividad(), estado(e, hoy)))
+                .map(e -> {
+                    String est = estado(e, hoy);
+                    String motivo = obtenerMotivo(e, est);
+                    return new EventoResponse(e.getId(), e.getTipo().name(), e.getFecha().toString(),
+                            e.getAnuncio() == null ? null : e.getAnuncio().getId(), e.getTitulo(), e.getOrganizacion(),
+                            e.getFechaActividad(), est, motivo);
+                })
                 .toList();
+    }
+
+    static String obtenerMotivo(EventoPostulacion e, String estado) {
+        if ("cancelada".equals(estado)) {
+            if (e.getAnuncio() != null && e.getAnuncio().getMotivoCancelacion() != null
+                    && !e.getAnuncio().getMotivoCancelacion().isBlank()) {
+                return e.getAnuncio().getMotivoCancelacion();
+            }
+            if (e.getMotivo() != null && !e.getMotivo().isBlank()) {
+                return e.getMotivo();
+            }
+        }
+        return null;
     }
 
     // En qué está hoy esa postulación, no solo qué pasó en el momento del evento
@@ -43,13 +60,16 @@ public class HistorialService {
         if (evento.getTipo() == EventoPostulacion.Tipo.rechazo) {
             return "rechazada";
         }
+        if (anuncio.getEstado() == Anuncio.Estado.cancelada) {
+            return "cancelada";
+        }
         Long usuarioId = evento.getUsuario().getId();
         Inscripcion inscripcion = anuncio.getInscripciones().stream()
                 .filter(i -> i.getUsuario() != null && usuarioId.equals(i.getUsuario().getId()))
                 .findFirst()
                 .orElse(null);
 
-        if (inscripcion == null) {
+        if (inscripcion == null || inscripcion.getEstado() == EstadoInscripcion.cancelado) {
             return "cancelada";
         }
         if (inscripcion.getEstado() == EstadoInscripcion.rechazado) {

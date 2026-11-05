@@ -110,6 +110,12 @@ public class AnuncioService {
         if (anuncio.getEstado() == Anuncio.Estado.cerrada) {
             throw new AnuncioException(409, "La convocatoria está cerrada y ya no acepta postulaciones");
         }
+        if (anuncio.getEstado() == Anuncio.Estado.cancelada) {
+            throw new AnuncioException(409, "La convocatoria fue cancelada y ya no acepta postulaciones");
+        }
+        if (anuncio.getEstado() != Anuncio.Estado.abierta) {
+            throw new AnuncioException(409, "La convocatoria no está abierta y ya no acepta postulaciones");
+        }
         if (inscripcionRepository.existsByAnuncioIdAndUsuarioId(anuncio.getId(), user.getId())) {
             throw new AnuncioException(409, "Ya te postulaste a esta convocatoria");
         }
@@ -202,6 +208,9 @@ public class AnuncioService {
     public void aceptarPostulante(User user, Long anuncioId, Long usuarioId) {
         Anuncio anuncio = buscarParaModificar(anuncioId);
         exigirCreador(anuncio, user, "aceptar postulantes");
+        if (anuncio.getEstado() != Anuncio.Estado.abierta) {
+            throw new AnuncioException(400, "No se pueden aceptar postulantes: la convocatoria no está abierta");
+        }
         long totalAceptados = inscripcionRepository.countByAnuncioIdAndEstado(anuncioId, EstadoInscripcion.aceptado);
         if (totalAceptados >= anuncio.getCupos()) {
             throw new AnuncioException(409, "No quedan cupos disponibles para aceptar más postulantes");
@@ -223,6 +232,9 @@ public class AnuncioService {
     public void rechazarPostulante(User user, Long anuncioId, Long usuarioId) {
         Anuncio anuncio = buscarParaModificar(anuncioId);
         exigirCreador(anuncio, user, "rechazar postulantes");
+        if (anuncio.getEstado() != Anuncio.Estado.abierta) {
+            throw new AnuncioException(400, "No se pueden rechazar postulantes: la convocatoria no está abierta");
+        }
         Inscripcion inscripcion = inscripcionRepository.findByAnuncioIdAndUsuarioId(anuncioId, usuarioId)
                 .orElseThrow(() -> new AnuncioException(404, "El postulante no tiene una solicitud para esta convocatoria"));
         if (inscripcion.getEstado() != EstadoInscripcion.pendiente) {
@@ -236,6 +248,35 @@ public class AnuncioService {
             }
         }
         historial.save(new EventoPostulacion(inscripcion.getUsuario(), anuncio, EventoPostulacion.Tipo.rechazo, LocalDateTime.now()));
+    }
+
+    public Anuncio cancelarAnuncio(User user, Long id, String motivo) {
+        Anuncio anuncio = buscarParaModificar(id);
+        exigirCreador(anuncio, user, "cancelar la convocatoria");
+        if (motivo == null || motivo.trim().isEmpty()) {
+            throw new AnuncioException(400, "El motivo de cancelación es obligatorio");
+        }
+        if (motivo.trim().length() < 5) {
+            throw new AnuncioException(400, "El motivo de cancelación debe tener al menos 5 caracteres");
+        }
+        if (LocalDate.parse(anuncio.getFecha()).isBefore(LocalDate.now())) {
+            throw new AnuncioException(400, "La actividad ya se realizó; no se puede cancelar la convocatoria");
+        }
+        if (anuncio.getEstado() == Anuncio.Estado.cancelada) {
+            throw new AnuncioException(400, "La convocatoria ya está cancelada");
+        }
+        anuncio.setEstado(Anuncio.Estado.cancelada);
+        anuncio.setMotivoCancelacion(motivo.trim());
+
+        LocalDateTime ahora = LocalDateTime.now();
+        for (Inscripcion i : anuncio.getInscripciones()) {
+            if (i.getEstado() == EstadoInscripcion.pendiente || i.getEstado() == EstadoInscripcion.aceptado) {
+                i.setEstado(EstadoInscripcion.cancelado);
+                inscripcionRepository.save(i);
+                historial.save(new EventoPostulacion(i.getUsuario(), anuncio, EventoPostulacion.Tipo.cancelacion, ahora, motivo.trim()));
+            }
+        }
+        return anuncio;
     }
 
     private Anuncio buscarParaModificar(Long id) {

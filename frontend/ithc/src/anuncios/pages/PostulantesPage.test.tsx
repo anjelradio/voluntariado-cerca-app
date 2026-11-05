@@ -172,4 +172,72 @@ describe("PostulantesPage", () => {
     expect(screen.getByText("Lucía Morales")).toBeTruthy();
     expect(screen.getByText(/Cupos aceptados: 2 de 2/)).toBeTruthy();
   });
+
+  it("al pulsar Cancelar oportunidad se despliega el input y muestra error si se confirma vacío", async () => {
+    vi.mocked(api.obtenerPostulantesRequest).mockResolvedValue(mockData);
+
+    mostrar();
+
+    const botonAbrir = await screen.findByRole("button", { name: "Cancelar oportunidad" });
+    fireEvent.click(botonAbrir);
+
+    expect(screen.getByLabelText(/Motivo de cancelación:/i)).toBeTruthy();
+
+    const botonConfirmar = screen.getByRole("button", { name: "Confirmar" });
+    fireEvent.click(botonConfirmar);
+
+    expect(await screen.findByText("El motivo de cancelación es obligatorio")).toBeTruthy();
+    expect(api.cancelarAnuncioRequest).not.toHaveBeenCalled();
+
+    const input = screen.getByLabelText(/Motivo de cancelación:/i);
+    fireEvent.change(input, { target: { value: "abc" } });
+    fireEvent.click(botonConfirmar);
+    expect(await screen.findByText("El motivo de cancelación debe tener al menos 5 caracteres")).toBeTruthy();
+
+    // Al pulsar cancelar se cierra el formulario
+    const botonCerrar = screen.getByRole("button", { name: "Cancelar" });
+    fireEvent.click(botonCerrar);
+    expect(screen.queryByLabelText(/Motivo de cancelación:/i)).toBeNull();
+  });
+
+  it("al enviar motivo válido se invoca la API de cancelación", async () => {
+    vi.mocked(api.obtenerPostulantesRequest).mockResolvedValue(mockData);
+    vi.mocked(api.cancelarAnuncioRequest).mockResolvedValue({
+      message: "Convocatoria cancelada exitosamente",
+      id: 10,
+      estado: "cancelada",
+      motivoCancelacion: "Fuerza mayor",
+    });
+
+    mostrar();
+
+    const botonAbrir = await screen.findByRole("button", { name: "Cancelar oportunidad" });
+    fireEvent.click(botonAbrir);
+
+    const input = screen.getByLabelText(/Motivo de cancelación:/i);
+    fireEvent.change(input, { target: { value: "Fuerza mayor" } });
+
+    const botonConfirmar = screen.getByRole("button", { name: "Confirmar" });
+    fireEvent.click(botonConfirmar);
+
+    await waitFor(() => {
+      expect(api.cancelarAnuncioRequest).toHaveBeenCalledWith(10, "Fuerza mayor");
+    });
+    expect(await screen.findByText("Convocatoria cancelada exitosamente")).toBeTruthy();
+  });
+
+  it("cuando la convocatoria ya está cancelada, el botón está deshabilitado y no hay botones de aceptar ni rechazar", async () => {
+    vi.mocked(api.obtenerPostulantesRequest).mockResolvedValue({
+      ...mockData,
+      estado: "cancelada",
+      motivoCancelacion: "Suspendida",
+    });
+
+    mostrar();
+
+    const boton = await screen.findByRole("button", { name: "Oportunidad cancelada" });
+    expect((boton as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "Aceptar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Rechazar" })).toBeNull();
+  });
 });

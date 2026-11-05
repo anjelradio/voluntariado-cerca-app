@@ -461,4 +461,109 @@ class AnuncioServiceTest {
         verify(inscripcionRepository).save(inscripcionPrimero);
         assertEquals(EstadoInscripcion.aceptado, inscripcionPrimero.getEstado());
     }
+
+    @Test
+    void cancelarAnuncioExitosoConMotivoCambiaEstadoYTransicionaPostulantes() {
+        Anuncio anuncio = nuevoAnuncio(5);
+        User vPendiente = usuario(2L);
+        User vAceptado = usuario(3L);
+        User vRechazado = usuario(4L);
+
+        Inscripcion insPendiente = new Inscripcion(anuncio, vPendiente, EstadoInscripcion.pendiente);
+        Inscripcion insAceptado = new Inscripcion(anuncio, vAceptado, EstadoInscripcion.aceptado);
+        Inscripcion insRechazado = new Inscripcion(anuncio, vRechazado, EstadoInscripcion.rechazado);
+        anuncio.getInscripciones().addAll(java.util.List.of(insPendiente, insAceptado, insRechazado));
+
+        Anuncio resultado = service.cancelarAnuncio(creador, 10L, "Se cancela por lluvias torrenciales");
+
+        assertEquals(Anuncio.Estado.cancelada, resultado.getEstado());
+        assertEquals("Se cancela por lluvias torrenciales", resultado.getMotivoCancelacion());
+        assertEquals(EstadoInscripcion.cancelado, insPendiente.getEstado());
+        assertEquals(EstadoInscripcion.cancelado, insAceptado.getEstado());
+        assertEquals(EstadoInscripcion.rechazado, insRechazado.getEstado());
+
+        verify(inscripcionRepository).save(insPendiente);
+        verify(inscripcionRepository).save(insAceptado);
+        verify(inscripcionRepository, never()).save(insRechazado);
+        verify(historial, times(2)).save(any(EventoPostulacion.class));
+    }
+
+    @Test
+    void cancelarAnuncioExigeMotivoObligatorio() {
+        nuevoAnuncio(3);
+
+        AnuncioException ex1 = assertThrows(AnuncioException.class, () -> service.cancelarAnuncio(creador, 10L, null));
+        assertEquals(400, ex1.getStatus());
+        assertTrue(ex1.getMessage().contains("motivo"));
+
+        AnuncioException ex2 = assertThrows(AnuncioException.class, () -> service.cancelarAnuncio(creador, 10L, "   "));
+        assertEquals(400, ex2.getStatus());
+        assertTrue(ex2.getMessage().contains("motivo"));
+    }
+
+    @Test
+    void cancelarAnuncioSoloPermitidoParaCreador() {
+        nuevoAnuncio(3);
+        User ajeno = usuario(99L);
+
+        AnuncioException ex = assertThrows(AnuncioException.class,
+                () -> service.cancelarAnuncio(ajeno, 10L, "Motivo válido"));
+        assertEquals(403, ex.getStatus());
+    }
+
+    @Test
+    void cancelarAnuncioYaCanceladoFalla() {
+        Anuncio anuncio = nuevoAnuncio(3);
+        anuncio.setEstado(Anuncio.Estado.cancelada);
+
+        AnuncioException ex = assertThrows(AnuncioException.class,
+                () -> service.cancelarAnuncio(creador, 10L, "Otro motivo"));
+        assertEquals(400, ex.getStatus());
+    }
+
+    @Test
+    void noSePuedePostularSiAnuncioEstaCancelado() {
+        Anuncio anuncio = nuevoAnuncio(3);
+        anuncio.setEstado(Anuncio.Estado.cancelada);
+        User voluntario = usuario(2L);
+
+        AnuncioException ex = assertThrows(AnuncioException.class,
+                () -> service.inscribirse(voluntario, 10L));
+        assertEquals(409, ex.getStatus());
+    }
+
+    @Test
+    void noSePuedeAceptarNiRechazarPostulanteSiAnuncioNoEstaAbierto() {
+        Anuncio anuncio = nuevoAnuncio(3);
+        anuncio.setEstado(Anuncio.Estado.cancelada);
+
+        AnuncioException exAceptar = assertThrows(AnuncioException.class,
+                () -> service.aceptarPostulante(creador, 10L, 2L));
+        assertEquals(400, exAceptar.getStatus());
+
+        AnuncioException exRechazar = assertThrows(AnuncioException.class,
+                () -> service.rechazarPostulante(creador, 10L, 2L));
+        assertEquals(400, exRechazar.getStatus());
+    }
+
+    @Test
+    void cancelarAnuncioConMotivoMenorA5CaracteresFalla() {
+        nuevoAnuncio(3);
+
+        AnuncioException ex = assertThrows(AnuncioException.class,
+                () -> service.cancelarAnuncio(creador, 10L, "hola"));
+        assertEquals(400, ex.getStatus());
+        assertTrue(ex.getMessage().contains("5 caracteres"));
+    }
+
+    @Test
+    void cancelarAnuncioConFechaPasadaFalla() {
+        Anuncio anuncio = nuevoAnuncio(3);
+        anuncio.setFecha("2000-01-01");
+
+        AnuncioException ex = assertThrows(AnuncioException.class,
+                () -> service.cancelarAnuncio(creador, 10L, "Motivo válido de cancelación"));
+        assertEquals(400, ex.getStatus());
+        assertTrue(ex.getMessage().contains("ya se realizó"));
+    }
 }

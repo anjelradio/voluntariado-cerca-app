@@ -26,7 +26,7 @@ import jakarta.persistence.Table;
 @Table(name = "anuncios")
 public class Anuncio {
 
-    public enum Estado { abierta, cerrada }
+    public enum Estado { abierta, cerrada, cancelada }
     public enum Causa { medio_ambiente, educacion, salud, animales, comunidad }
     public enum Modalidad { presencial, virtual }
 
@@ -62,6 +62,9 @@ public class Anuncio {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Estado estado = Estado.abierta;
+
+    @Column(name = "motivo_cancelacion", length = 500)
+    private String motivoCancelacion;
 
     // La columna se creó como autor_id; se mantiene ese nombre para no perder los anuncios existentes
     @ManyToOne(optional = false)
@@ -99,6 +102,9 @@ public class Anuncio {
 
     public Estado getEstado() { return estado; }
     public void setEstado(Estado estado) { this.estado = estado; }
+
+    public String getMotivoCancelacion() { return motivoCancelacion; }
+    public void setMotivoCancelacion(String motivoCancelacion) { this.motivoCancelacion = motivoCancelacion; }
 
     public User getCreador() { return creador; }
     public void setCreador(User creador) { this.creador = creador; }

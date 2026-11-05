@@ -84,6 +84,11 @@ export const HistorialPage = () => {
                   {ESTADOS_POSTULACION[e.estado] ?? e.estado}
                 </span>
               </p>
+              {e.estado === "cancelada" && e.motivoCancelacion && (
+                <p className="motivo-cancelacion" style={{ marginTop: "0.25rem", color: "#666" }}>
+                  <strong>Motivo de cancelación:</strong> {e.motivoCancelacion}
+                </p>
+              )}
             </div>
           ))}
         </>

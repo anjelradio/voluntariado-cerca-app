@@ -92,4 +92,21 @@ class HistorialServiceTest {
         assertEquals("eliminada", HistorialService.estado(evento, hoy));
         assertEquals("Limpieza del parque", evento.getTitulo());
     }
+
+    @Test
+    void muestraCanceladaSiElCreadorCanceloLaConvocatoria() {
+        anuncio.getInscripciones().add(new Inscripcion(anuncio, voluntario, EstadoInscripcion.aceptado));
+        anuncio.setEstado(Anuncio.Estado.cancelada);
+        anuncio.setMotivoCancelacion("Suspendido por lluvia");
+
+        assertEquals("cancelada", HistorialService.estado(evento(), hoy));
+        assertEquals("Suspendido por lluvia", HistorialService.obtenerMotivo(evento(), "cancelada"));
+    }
+
+    @Test
+    void muestraCanceladaSiLaInscripcionPasoAEstadoCancelado() {
+        anuncio.getInscripciones().add(new Inscripcion(anuncio, voluntario, EstadoInscripcion.cancelado));
+
+        assertEquals("cancelada", HistorialService.estado(evento(), hoy));
+    }
 }

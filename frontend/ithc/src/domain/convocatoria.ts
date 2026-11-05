@@ -1,4 +1,4 @@
-export type Estado = "abierta" | "cerrada";
+export type Estado = "abierta" | "cerrada" | "cancelada";
 export type Causa = "medio_ambiente" | "educacion" | "salud" | "animales" | "comunidad";
 export type Modalidad = "presencial" | "virtual";
 
@@ -32,11 +32,12 @@ export interface Anuncio extends Omit<AnuncioDatos, "causa" | "modalidad"> {
   modalidad: Modalidad | null;
   id: number;
   estado: Estado;
+  motivoCancelacion?: string | null;
   creadorId: number;
   creadorNombre: string;
   inscritos: number;
   inscrito: boolean;
-  miEstadoPostulacion?: "pendiente" | "aceptado" | "rechazado" | null;
+  miEstadoPostulacion?: "pendiente" | "aceptado" | "rechazado" | "cancelado" | null;
   postulados: Postulado[];
 }
 
@@ -58,6 +59,9 @@ export interface PostulantesConvocatoria {
   titulo: string;
   organizacion: string;
   cupos: number;
+  estado?: Estado;
+  motivoCancelacion?: string | null;
+  creadorId?: number;
   aceptadosTotal: number;
   pendientes: Postulante[];
   aceptados: Postulante[];
@@ -80,6 +84,7 @@ export const estadoVisible = (anuncio: Anuncio, hoy = new Date()): EstadoVisible
 export const ESTADOS: Record<EstadoVisible, string> = {
   abierta: "Abierta",
   cerrada: "Cerrada",
+  cancelada: "Cancelada",
   vencida: "Vencida",
 };
 
@@ -108,6 +113,7 @@ export const textoCupos = (anuncio: Anuncio) => {
 // Mismas reglas que el backend: devuelve el motivo por el que no se puede postular, o null si sí se puede.
 export const motivoBloqueoInscripcion = (anuncio: Anuncio, userId?: number, hoy = new Date()): string | null => {
   if (esCreador(anuncio, userId)) return "No puedes postularte a tu propia convocatoria";
+  if (anuncio.estado === "cancelada") return "La convocatoria fue cancelada";
   if (anuncio.estado === "cerrada") return "La convocatoria está cerrada y ya no acepta postulaciones";
   if (anuncio.inscrito) return "Ya te postulaste a esta convocatoria";
   if (anuncio.fecha < fechaLocal(hoy)) return "La fecha de la convocatoria ya pasó";
