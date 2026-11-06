@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ESTADOS,
+  agruparAnunciosPorFecha,
   esCreador,
   estadoVisible,
   fechaLegible,
@@ -112,3 +113,21 @@ describe("Creador del anuncio", () => {
     expect(esCreador(anuncio, 8)).toBe(false);
   });
 });
+
+describe("Agrupación temporal de convocatorias", () => {
+  const hoyRef = "2026-11-05";
+  const aHoy: Anuncio = { ...anuncio, id: 101, fecha: "2026-11-05" };
+  const aEstaSemana: Anuncio = { ...anuncio, id: 102, fecha: "2026-11-08" };
+  const aProxima: Anuncio = { ...anuncio, id: 103, fecha: "2026-11-25" };
+  const aPasada: Anuncio = { ...anuncio, id: 104, fecha: "2026-11-01" };
+
+  it("clasifica las convocatorias correctamente en Hoy, Esta semana, Próximas y Pasadas", () => {
+    const grupos = agruparAnunciosPorFecha([aHoy, aEstaSemana, aProxima, aPasada], hoyRef);
+
+    expect(grupos.hoy.map((a) => a.id)).toEqual([101]);
+    expect(grupos.estaSemana.map((a) => a.id)).toEqual([102]);
+    expect(grupos.proximas.map((a) => a.id)).toEqual([103]);
+    expect(grupos.pasadas.map((a) => a.id)).toEqual([104]);
+  });
+});
+

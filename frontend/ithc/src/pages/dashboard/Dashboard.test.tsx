@@ -96,4 +96,63 @@ describe("Dashboard - Explorar y Mis Anuncios", () => {
 
     expect(screen.getByText("Sin resultados")).toBeTruthy();
   });
+
+  it("agrupa los anuncios en secciones temporales con encabezados y contadores", () => {
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    const dFutura = new Date();
+    dFutura.setDate(dFutura.getDate() + 2);
+    const estaSemanaStr = dFutura.toISOString().slice(0, 10);
+
+    mockUseAnuncios.mockReturnValue({
+      anuncios: [
+        {
+          id: 1,
+          titulo: "Actividad de Hoy",
+          organizacion: "Org 1",
+          descripcion: "Desc 1",
+          fecha: hoyStr,
+          lugar: "Cochabamba",
+          cupos: 5,
+          causa: "educacion",
+          modalidad: "presencial",
+          estado: "abierta",
+          creadorId: 2,
+          creadorNombre: "Carlos",
+          inscritos: 1,
+          inscrito: false,
+          postulados: [],
+        },
+        {
+          id: 2,
+          titulo: "Actividad de Esta Semana",
+          organizacion: "Org 2",
+          descripcion: "Desc 2",
+          fecha: estaSemanaStr,
+          lugar: "La Paz",
+          cupos: 10,
+          causa: "salud",
+          modalidad: "virtual",
+          estado: "abierta",
+          creadorId: 3,
+          creadorNombre: "Lucía",
+          inscritos: 0,
+          inscrito: false,
+          postulados: [],
+        },
+      ],
+      cargando: false,
+      error: "",
+      filtros: SIN_FILTROS,
+      vista: "explorar",
+      cambiarVista,
+      limpiarFiltros,
+    });
+
+    renderDashboard();
+
+    expect(screen.getByText("Hoy")).toBeTruthy();
+    expect(screen.getByText("Esta semana")).toBeTruthy();
+    expect(screen.getByText("Actividad de Hoy")).toBeTruthy();
+    expect(screen.getByText("Actividad de Esta Semana")).toBeTruthy();
+  });
 });

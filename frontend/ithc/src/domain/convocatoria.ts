@@ -120,3 +120,47 @@ export const motivoBloqueoInscripcion = (anuncio: Anuncio, userId?: number, hoy 
   if (anuncio.inscritos >= anuncio.cupos) return "No quedan cupos disponibles";
   return null;
 };
+
+export interface GruposTemporales {
+  hoy: Anuncio[];
+  estaSemana: Anuncio[];
+  proximas: Anuncio[];
+  pasadas: Anuncio[];
+}
+
+export const fechaHoyISO = (d = new Date()): string => fechaLocal(d);
+
+export const sumarDiasISO = (fechaISO: string, dias: number): string => {
+  const [anio, mes, dia] = fechaISO.split("-").map(Number);
+  const d = new Date(anio, mes - 1, dia);
+  d.setDate(d.getDate() + dias);
+  return fechaLocal(d);
+};
+
+export const agruparAnunciosPorFecha = (
+  anuncios: Anuncio[],
+  hoyISO = fechaHoyISO()
+): GruposTemporales => {
+  const limiteSemana = sumarDiasISO(hoyISO, 7);
+  const grupos: GruposTemporales = {
+    hoy: [],
+    estaSemana: [],
+    proximas: [],
+    pasadas: [],
+  };
+
+  for (const anuncio of anuncios) {
+    if (anuncio.fecha === hoyISO) {
+      grupos.hoy.push(anuncio);
+    } else if (anuncio.fecha > hoyISO && anuncio.fecha <= limiteSemana) {
+      grupos.estaSemana.push(anuncio);
+    } else if (anuncio.fecha > limiteSemana) {
+      grupos.proximas.push(anuncio);
+    } else {
+      grupos.pasadas.push(anuncio);
+    }
+  }
+
+  return grupos;
+};
+

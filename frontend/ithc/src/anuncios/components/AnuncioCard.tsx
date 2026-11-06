@@ -50,40 +50,70 @@ export const AnuncioCard = ({ anuncio }: AnuncioCardProps) => {
 
   return (
     <div className="anuncio">
-      <p>
-        <strong>{anuncio.titulo}</strong> <span className={`estado ${estado}`}>{ESTADOS[estado]}</span>
-      </p>
-      <p>{anuncio.descripcion}</p>
-      <p className="detalle">
-        <strong>Organización:</strong> {anuncio.organizacion} · <strong>Lugar:</strong> {anuncio.lugar} ·{" "}
-        <strong>Fecha:</strong> {fechaLegible(anuncio.fecha)}
-      </p>
+      <div className="anuncio-cabecera">
+        <p className="anuncio-titulo">
+          <strong>{anuncio.titulo}</strong>
+        </p>
+        <span className={`estado ${estado}`}>{ESTADOS[estado]}</span>
+      </div>
+
+      <p className="anuncio-descripcion">{anuncio.descripcion}</p>
+
+      <div className="anuncio-metadatos">
+        <span className="meta-item">
+          <strong>Organización:</strong> {anuncio.organizacion}
+        </span>
+        <span className="meta-separador">·</span>
+        <span className="meta-item">
+          <strong>Lugar:</strong> {anuncio.lugar}
+        </span>
+        <span className="meta-separador">·</span>
+        <span className="meta-item">
+          <strong>Fecha:</strong> {fechaLegible(anuncio.fecha)}
+        </span>
+      </div>
+
       {(anuncio.causa || anuncio.modalidad) && (
-        <p className="detalle">
+        <div className="anuncio-tags">
           {anuncio.causa && (
-            <span>
+            <span className="tag-pill">
               <strong>Causa:</strong> {CAUSAS[anuncio.causa]}
             </span>
           )}
-          {anuncio.causa && anuncio.modalidad && " · "}
+          {anuncio.causa && anuncio.modalidad && (
+            <span className="meta-separador">·</span>
+          )}
           {anuncio.modalidad && (
-            <span>
+            <span className="tag-pill">
               <strong>Modalidad:</strong> {MODALIDADES[anuncio.modalidad]}
             </span>
           )}
-        </p>
+        </div>
       )}
-      <p className="detalle">
-        <span className={cuposLibres(anuncio) <= 1 ? "cupos pocos" : "cupos"}>{textoCupos(anuncio)}</span> · publicado
-        por {anuncio.creadorNombre}
-      </p>
+
+      <div className="anuncio-pie">
+        <span
+          className={
+            cuposLibres(anuncio) === 0
+              ? "cupos sin-cupos"
+              : cuposLibres(anuncio) === 1
+              ? "cupos pocos"
+              : "cupos"
+          }
+        >
+          {textoCupos(anuncio)}
+        </span>
+        <span className="publicado-por">
+          publicado por {anuncio.creadorNombre}
+        </span>
+      </div>
 
       {/* Postulación: si está bloqueada se explica el motivo. Al creador no se le muestra porque nunca puede postularse */}
       {esMio ? null : anuncio.miEstadoPostulacion === "pendiente" ? (
-        <div className="acciones">
+        <div className="acciones accion-postulacion">
           <p className="aviso-pendiente">Solicitud en espera</p>
           <button
-            className="secundario"
+            className="secundario btn-cancelar-postulacion"
             onClick={() =>
               ejecutar(() => cancelarPostulacion(anuncio.id), "Cancelaste tu postulación.")
             }
@@ -92,10 +122,10 @@ export const AnuncioCard = ({ anuncio }: AnuncioCardProps) => {
           </button>
         </div>
       ) : anuncio.miEstadoPostulacion === "aceptado" || anuncio.inscrito ? (
-        <div className="acciones">
+        <div className="acciones accion-postulacion">
           <p className="ok">✓ Estás postulado</p>
           <button
-            className="secundario"
+            className="secundario btn-cancelar-postulacion"
             onClick={() =>
               ejecutar(() => cancelarPostulacion(anuncio.id), "Cancelaste tu postulación. El cupo quedó libre.")
             }
@@ -104,7 +134,7 @@ export const AnuncioCard = ({ anuncio }: AnuncioCardProps) => {
           </button>
         </div>
       ) : (
-        <>
+        <div className="accion-postulacion-contenedor">
           <button
             disabled={!!bloqueo}
             onClick={() =>
@@ -114,14 +144,17 @@ export const AnuncioCard = ({ anuncio }: AnuncioCardProps) => {
             Postularme
           </button>
           {bloqueo && (
-            <div className="aviso">
-              <p>{bloqueo}</p>
-              <button type="button" className="secundario" onClick={verDisponibles}>
-                Ver convocatorias disponibles
-              </button>
+            <div className="aviso aviso-bloqueo">
+              <span className="aviso-icono" aria-hidden="true">ℹ</span>
+              <div className="aviso-contenido">
+                <p>{bloqueo}</p>
+                <button type="button" className="secundario btn-disponibles" onClick={verDisponibles}>
+                  Ver convocatorias disponibles
+                </button>
+              </div>
             </div>
           )}
-        </>
+        </div>
       )}
       {mensaje && (
         <p className="confirmacion" role="status">
